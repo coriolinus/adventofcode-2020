@@ -1,16 +1,106 @@
-use cargo_toml::Manifest;
 use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use thiserror::Error;
 use tinytemplate::TinyTemplate;
+use toml_edit::Document;
 
 use crate::config::Config;
 
 const EXPECT_PACKAGE: &str = env!("CARGO_PKG_NAME");
 
-#[derive(Serialize)]
-struct Context {
+/// ensure we're in the correct directory by verifying the package name in `Cargo.toml`
+fn ensure_correct_dir(current_dir: &Path) -> Result<(PathBuf, Document), Error> {
+    // parse the local Cargo.toml to discover if we're in the right place
+    let cargo_toml_path = current_dir.join("Cargo.toml");
+    if !cargo_toml_path.exists() {
+        Err(Error::NoCargoToml)?;
+    }
+    let manifest = Document::from_str(&std::fs::read_to_string(&cargo_toml_path)?)?;
+    let found_package_name = manifest
+        .root
+        .as_table()
+        .expect("document root is a table")
+        .get("package")
+        .ok_or(Error::MalformedToml)?
+        .as_table_like()
+        .ok_or(Error::MalformedToml)?
+        .get("name")
+        .ok_or(Error::MalformedToml)?
+        .as_value()
+        .ok_or(Error::MalformedToml)?
+        .as_str()
+        .ok_or(Error::MalformedToml)?;
+
+    if found_package_name != EXPECT_PACKAGE {
+        Err(Error::WrongPackage(found_package_name.to_string()))?;
+    }
+    Ok((cargo_toml_path, manifest))
+}
+
+fn add_crate_to_workspace(
+    cargo_toml_path: &Path,
+    manifest: &mut Document,
+    crate_name: &str,
+) -> Result<(), Error> {
+    let root_table = manifest
+        .root
+        .as_table_mut()
+        .expect("docuemnt root is a table");
+
+    let workspace = root_table.entry("workspace");
+    if workspace.is_none() {
+        *workspace = toml_edit::Item::Table(toml_edit::Table::new());
+    }
+    let workspace = workspace.as_table_mut().ok_or(Error::MalformedToml)?;
+
+    let members = workspace.entry("members");
+    if members.is_none() {
+        *members = toml_edit::Item::Value(toml_edit::Value::Array(Default::default()));
+    }
+    let members = members
+        .as_value_mut()
+        .ok_or(Error::MalformedToml)?
+        .as_array_mut()
+        .ok_or(Error::MalformedToml)?;
+
+    members.push(crate_name).map_err(|_| Error::MalformedToml)?;
+
+    std::fs::write(cargo_toml_path, manifest.to_string_in_original_order())?;
+    Ok(())
+}
+
+fn render_templates_into(
+    current_dir: &Path,
+    day_dir: &Path,
     day: u8,
-    package_name: String,
+    day_name: &str,
+) -> Result<(), Error> {
+    #[derive(Serialize)]
+    struct Context {
+        day: u8,
+        package_name: String,
+    }
+
+    let context = Context {
+        day,
+        package_name: day_name.to_string(),
+    };
+
+    // render templates
+    let template_dir = current_dir.join("day-template");
+    for template in &["Cargo.toml", "src/lib.rs", "src/main.rs"] {
+        let mut tt = TinyTemplate::new();
+        let template_text = std::fs::read_to_string(template_dir.join(template))?;
+        tt.add_template(template, &template_text)
+            .map_err(|err| Error::Template(err, template.to_string()))?;
+        let rendered_text = tt
+            .render(template, &context)
+            .map_err(|err| Error::Template(err, template.to_string()))?;
+        std::fs::write(day_dir.join(template), rendered_text)?;
+    }
+
+    Ok(())
 }
 
 /// Initialize a new day.
@@ -24,49 +114,18 @@ struct Context {
 /// - downloading the puzzle input
 pub fn initialize(config: &Config, day: u8) -> Result<(), Error> {
     let current_dir = std::env::current_dir()?;
-    // parse the local Cargo.toml to discover if we're in the right place
-    let cargo_toml_path = current_dir.join("Cargo.toml");
-    if !cargo_toml_path.exists() {
-        Err(Error::NoCargoToml)?;
-    }
-    let mut manifest = Manifest::from_path(&cargo_toml_path)?;
-    let found_package_name = manifest
-        .package
-        .as_ref()
-        .ok_or(Error::NoPackage)?
-        .name
-        .clone();
-    if found_package_name != EXPECT_PACKAGE {
-        Err(Error::WrongPackage(found_package_name))?;
-    }
+    let (cargo_toml_path, mut manifest) = ensure_correct_dir(&current_dir)?;
 
-    // create a new sub-crate
+    // set up new sub-crate basics
     let day_name = format!("day{:02}", day);
     let day_dir = current_dir.join(&day_name);
     std::fs::create_dir_all(day_dir.join("src"))?;
 
     // update the workspaces of this crate
-    let mut workspace = manifest.workspace.unwrap_or_default();
-    workspace.members.push(day_name.clone());
-    manifest.workspace = Some(workspace);
-    let serialized = toml::ser::to_string_pretty(&manifest)?;
-    std::fs::write(cargo_toml_path, serialized.as_bytes())?;
+    add_crate_to_workspace(&cargo_toml_path, &mut manifest, &day_name)?;
 
-    // set up the templates
-    let context = Context {
-        day,
-        package_name: day_name,
-    };
-
-    // render templates
-    let template_dir = current_dir.join("day-template");
-    for template in &["Cargo.toml", "src/lib.rs", "src/main.rs"] {
-        let mut tt = TinyTemplate::new();
-        let template_text = std::fs::read_to_string(template_dir.join(template))?;
-        tt.add_template(template, &template_text)?;
-        let rendered_text = tt.render(template, &context)?;
-        std::fs::write(day_dir.join(template), rendered_text)?;
-    }
+    // render templates, creating new sub-crate
+    render_templates_into(&current_dir, &day_dir, day, &day_name)?;
 
     // download the input
     crate::website::get_input(config, day)?;
@@ -80,10 +139,10 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("Cargo.toml not found")]
     NoCargoToml,
-    #[error(transparent)]
-    CargoToml(#[from] cargo_toml::Error),
-    #[error("Cargo.toml did not contain section: [package]")]
-    NoPackage,
+    #[error("could not parse Cargo.toml")]
+    ParseToml(#[from] toml_edit::TomlError),
+    #[error("Cargo.toml is malformed")]
+    MalformedToml,
     #[error(
         "working dir must be root of package {} but is actually {0}",
         EXPECT_PACKAGE
@@ -91,8 +150,8 @@ pub enum Error {
     WrongPackage(String),
     #[error("failed to write updated Cargo.toml")]
     CargoTomlWrite(#[from] toml::ser::Error),
-    #[error(transparent)]
-    Template(#[from] tinytemplate::error::Error),
+    #[error("template error for {1}")]
+    Template(#[source] tinytemplate::error::Error, String),
     #[error("downloading input")]
     GetInput(#[from] crate::website::Error),
 }
