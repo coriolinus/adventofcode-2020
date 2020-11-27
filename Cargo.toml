@@ -1,0 +1,22 @@
+[package]
+name = "aoc2020"
+version = "0.1.0"
+authors = ["Peter Goodspeed-Niklaus <peter.r.goodspeedniklaus@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+bitvec = "0.19.4"
+cargo_toml = "0.8.1"
+chrono = "0.4.19"
+color-eyre = "0.5.8"
+dirs = "3.0.1"
+im = "15.0.0"
+lazy_static = "1.4.0"
+path-absolutize = "3.0.6"
+regex = "1.4.2"
+reqwest = { version = "0.10.9", features = [ "blocking", "gzip", "cookies" ] }
+serde = { version = "1.0.117", features = [ "derive" ] }
+structopt = "0.3.20"
+thiserror = "1.0.22"
+tinytemplate = "1.1.0"
+toml = "0.5.7"
