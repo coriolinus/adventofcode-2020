@@ -1,6 +1,5 @@
 use cargo_toml::Manifest;
 use serde::Serialize;
-use std::path::Path;
 use thiserror::Error;
 use tinytemplate::TinyTemplate;
 
