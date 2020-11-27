@@ -5,7 +5,7 @@ use tinytemplate::TinyTemplate;
 
 use crate::config::Config;
 
-const EXPECT_PACKAGE: &str = env!("CARGO_PKG_VERSION");
+const EXPECT_PACKAGE: &str = env!("CARGO_PKG_NAME");
 
 #[derive(Serialize)]
 struct Context {
