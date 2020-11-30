@@ -1684,7 +1684,8 @@ dependencies = [
 [[package]]
 name = "toml_edit"
 version = "0.2.0"
-source = "git+https://github.com/coriolinus/toml_edit.git#ba9ac77ef8ef2eac20db7129df5054bf3b22e43a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09391a441b373597cf0888d2b052dcf82c5be4fee05da3636ae30fb57aad8484"
 dependencies = [
  "chrono",
  "combine",
