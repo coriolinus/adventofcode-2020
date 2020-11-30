@@ -1,5 +1,5 @@
 use aoc2020::config::Config;
-use {package_name}::\{part1, part2\};
+use {package_name}::\{part1, part2};
 
 use color_eyre::eyre::Result;
 use structopt::StructOpt;
@@ -20,7 +20,7 @@ struct RunArgs \{
     /// run part 2
     #[structopt(long)]
     part2: bool,
-\}
+}
 
 impl RunArgs \{
     fn input(&self) -> Result<PathBuf> \{
@@ -28,11 +28,11 @@ impl RunArgs \{
             None => \{
                 let config = Config::load()?;
                 Ok(config.input_for(DAY))
-            \}
+            }
             Some(ref path) => Ok(path.clone()),
-        \}
-    \}
-\}
+        }
+    }
+}
 
 fn main() -> Result<()> \{
     color_eyre::install()?;
@@ -41,9 +41,9 @@ fn main() -> Result<()> \{
 
     if !args.no_part1 \{
         part1(&input_path)?;
-    \}
+    }
     if args.part2 \{
         part2(&input_path)?;
-    \}
+    }
     Ok(())
-\}
+}
