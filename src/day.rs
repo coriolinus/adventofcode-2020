@@ -17,20 +17,20 @@ fn ensure_correct_dir(current_dir: &Path) -> Result<(PathBuf, Document), Error> 
         Err(Error::NoCargoToml)?;
     }
     let manifest = Document::from_str(&std::fs::read_to_string(&cargo_toml_path)?)?;
-    let found_package_name = manifest
-        .root
-        .as_table()
-        .expect("document root is a table")
-        .get("package")
-        .ok_or(Error::MalformedToml)?
-        .as_table_like()
-        .ok_or(Error::MalformedToml)?
-        .get("name")
-        .ok_or(Error::MalformedToml)?
-        .as_value()
-        .ok_or(Error::MalformedToml)?
-        .as_str()
-        .ok_or(Error::MalformedToml)?;
+
+    fn get_package_name(manifest: &Document) -> Option<&str> {
+        manifest
+            .root
+            .as_table()
+            .expect("document root is a table")
+            .get("package")?
+            .as_table_like()?
+            .get("name")?
+            .as_value()?
+            .as_str()
+    }
+
+    let found_package_name = get_package_name(&manifest).ok_or(Error::MalformedToml)?;
 
     if found_package_name != EXPECT_PACKAGE {
         Err(Error::WrongPackage(found_package_name.to_string()))?;
