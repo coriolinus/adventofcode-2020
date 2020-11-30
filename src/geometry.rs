@@ -343,7 +343,7 @@ impl Add for Vector3 {
 /// for compatibility with Direction.
 #[derive(Clone, Default)]
 pub struct Map<T: Clone> {
-    tiles: im::Vector<T>,
+    tiles: Vec<T>,
     width: usize,
     height: usize,
 }
@@ -396,7 +396,7 @@ where
         let height = source.len();
         if height == 0 {
             return Map {
-                tiles: im::Vector::new(),
+                tiles: Vec::new(),
                 width: 0,
                 height: 0,
             };
@@ -411,10 +411,10 @@ where
             "input must be rectangular"
         );
 
-        let mut tiles = im::Vector::new();
+        let mut tiles = Vec::with_capacity(width * height);
         for row in source.iter() {
             for tile in row.as_ref().iter() {
-                tiles.push_back(tile.clone());
+                tiles.push(tile.clone());
             }
         }
 
