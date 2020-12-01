@@ -337,10 +337,11 @@ impl Add for Vector3 {
 
 /// A Map keeps track of a tile grid.
 ///
-/// It is based on immutable data structures, so is cheap to clone.
-///
 /// Its coordinate system assumes that the origin is in the lower left,
 /// for compatibility with Direction.
+///
+/// While it is possible to clone a map, it is generally safe to assume that doing so
+/// is a sign that there's a better approach possible.
 #[derive(Clone, Default)]
 pub struct Map<T: Clone> {
     tiles: Vec<T>,
@@ -388,7 +389,7 @@ where
     /// Convert an input 2d array into a map.
     ///
     /// Note that the input array must already be arranged with the y axis
-    /// as the outer array and the orientation such that source[0][0] is the
+    /// as the outer array and the orientation such that `source[0][0]` is the
     /// lower left corner of the map.
     ///
     /// Panics if the input array is not rectangular.
