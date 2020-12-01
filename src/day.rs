@@ -64,6 +64,14 @@ fn add_crate_to_workspace(
         .as_array_mut()
         .ok_or(Error::MalformedToml)?;
 
+    if members.iter().any(|item| {
+        item.as_str()
+            .map(|item_str| item_str == crate_name)
+            .unwrap_or_default()
+    }) {
+        Err(Error::CrateAlreadyExists(crate_name.to_string()))?;
+    }
+
     members.push(crate_name).map_err(|_| Error::MalformedToml)?;
 
     std::fs::write(cargo_toml_path, manifest.to_string_in_original_order())?;
@@ -76,6 +84,8 @@ fn render_templates_into(
     day: u8,
     day_name: &str,
 ) -> Result<(), Error> {
+    use std::io::Write;
+
     #[derive(Serialize)]
     struct Context {
         day: u8,
@@ -97,7 +107,12 @@ fn render_templates_into(
         let rendered_text = tt
             .render(template, &context)
             .map_err(|err| Error::Template(err, template.to_string()))?;
-        std::fs::write(day_dir.join(template), rendered_text)?;
+
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(day_dir.join(template))?;
+        file.write_all(rendered_text.as_bytes())?;
     }
 
     Ok(())
@@ -163,4 +178,6 @@ pub enum Error {
     Template(#[source] tinytemplate::error::Error, String),
     #[error("downloading input")]
     GetInput(#[from] crate::website::Error),
+    #[error("crate already exists in workspace: {0}")]
+    CrateAlreadyExists(String),
 }
