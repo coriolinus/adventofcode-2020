@@ -12,4 +12,7 @@ pub fn part2(_input: &Path) -> Result<(), Error> \{
 }
 
 #[derive(Debug, Error)]
-pub enum Error \{}
+pub enum Error \{
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
