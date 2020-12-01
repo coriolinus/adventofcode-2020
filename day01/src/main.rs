@@ -2,8 +2,8 @@ use aoc2020::config::Config;
 use day01::{part1, part2};
 
 use color_eyre::eyre::Result;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const DAY: u8 = 1;
 

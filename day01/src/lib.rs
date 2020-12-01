@@ -1,7 +1,7 @@
 use aoc2020::parse;
 
-use std::path::Path;
 use std::collections::HashSet;
+use std::path::Path;
 use thiserror::Error;
 
 fn find_pair_summing_to(data: &HashSet<i64>, sum: i64) -> Option<(i64, i64)> {
@@ -32,7 +32,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
         Some((a, b)) => {
             println!("{} * {} == {}", a, b, a * b);
         }
-        None => println!("pair not found")
+        None => println!("pair not found"),
     }
     Ok(())
 }
@@ -43,7 +43,7 @@ pub fn part2(input: &Path) -> Result<(), Error> {
         Some((a, b, c)) => {
             println!("{} * {} * {} == {}", a, b, c, a * b * c);
         }
-        None => println!("triple not found")
+        None => println!("triple not found"),
     }
     Ok(())
 }
