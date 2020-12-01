@@ -112,23 +112,32 @@ fn render_templates_into(
 /// - updating the workspaces of this crate
 /// - copying in a few templates to set up the day
 /// - downloading the puzzle input
-pub fn initialize(config: &Config, day: u8) -> Result<(), Error> {
+pub fn initialize(
+    config: &Config,
+    day: u8,
+    skip_create_crate: bool,
+    skip_get_input: bool,
+) -> Result<(), Error> {
     let current_dir = std::env::current_dir()?;
     let (cargo_toml_path, mut manifest) = ensure_correct_dir(&current_dir)?;
 
-    // set up new sub-crate basics
-    let day_name = format!("day{:02}", day);
-    let day_dir = current_dir.join(&day_name);
-    std::fs::create_dir_all(day_dir.join("src"))?;
+    if !skip_create_crate {
+        // set up new sub-crate basics
+        let day_name = format!("day{:02}", day);
+        let day_dir = current_dir.join(&day_name);
+        std::fs::create_dir_all(day_dir.join("src"))?;
 
-    // update the workspaces of this crate
-    add_crate_to_workspace(&cargo_toml_path, &mut manifest, &day_name)?;
+        // update the workspaces of this crate
+        add_crate_to_workspace(&cargo_toml_path, &mut manifest, &day_name)?;
 
-    // render templates, creating new sub-crate
-    render_templates_into(&current_dir, &day_dir, day, &day_name)?;
+        // render templates, creating new sub-crate
+        render_templates_into(&current_dir, &day_dir, day, &day_name)?;
+    }
 
-    // download the input
-    crate::website::get_input(config, day)?;
+    if !skip_get_input {
+        // download the input
+        crate::website::get_input(config, day)?;
+    }
 
     Ok(())
 }

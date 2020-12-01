@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Clone, Copy, Debug)]
 struct Day {
-    /// day (default: today's date)
+    /// Day (default: today's date)
     #[structopt(short, long)]
     day: Option<u8>,
 }
@@ -35,6 +35,14 @@ enum Subcommand {
     Init {
         #[structopt(flatten)]
         day: Day,
+
+        /// Do not create a sub-crate for the requested day
+        #[structopt(long)]
+        skip_create_crate: bool,
+
+        /// Do not attempt to fetch the input for the requested day
+        #[structopt(long)]
+        skip_get_input: bool,
     },
 }
 
@@ -46,9 +54,13 @@ impl Subcommand {
                 println!("{}", aoc2020::website::url_for_day(day.into()));
                 Ok(())
             }
-            Self::Init { day } => {
+            Self::Init {
+                day,
+                skip_create_crate,
+                skip_get_input,
+            } => {
                 let config = Config::load()?;
-                aoc2020::day::initialize(&config, day.into())?;
+                aoc2020::day::initialize(&config, day.into(), skip_create_crate, skip_get_input)?;
                 Ok(())
             }
         }
