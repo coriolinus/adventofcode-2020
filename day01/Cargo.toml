@@ -1,0 +1,11 @@
+[package]
+name = "day01"
+version = "0.1.0"
+authors = ["Peter Goodspeed-Niklaus <peter.r.goodspeedniklaus@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+aoc2020 = { path = ".." }
+color-eyre = "0.5.8"
+structopt = "0.3.20"
+thiserror = "1.0.22"
