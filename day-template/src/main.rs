@@ -10,7 +10,7 @@ const DAY: u8 = {day};
 #[derive(StructOpt, Debug)]
 struct RunArgs \{
     /// input file
-    #[structopt(parse(from_os_str))]
+    #[structopt(long, parse(from_os_str))]
     input: Option<PathBuf>,
 
     /// skip part 1
