@@ -360,6 +360,7 @@ version = "0.1.0"
 dependencies = [
  "aoc2020",
  "color-eyre",
+ "parse-display",
  "structopt",
  "thiserror",
 ]
@@ -968,6 +969,31 @@ name = "owo-colors"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a1250cdd103eef6bd542b5ae82989f931fc00a41a27f60377338241594410f3"
+
+[[package]]
+name = "parse-display"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12035532e456d9f4f59fcfa3834dc5f45b391d9029f5287292bf41960b05ce91"
+dependencies = [
+ "once_cell",
+ "parse-display-derive",
+ "regex",
+]
+
+[[package]]
+name = "parse-display-derive"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "449f5881ab953fa168d60a57dd182a3e1fdeff16bb9bdd309145fbd8f32326ec"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "regex-syntax",
+ "syn",
+]
 
 [[package]]
 name = "path-absolutize"
