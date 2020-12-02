@@ -1,4 +1,4 @@
-use aoc2020::config::Config;
+use aoc2020::{config::Config, website::get_input};
 use day01::{part1, part2};
 
 use color_eyre::eyre::Result;
@@ -27,6 +27,9 @@ impl RunArgs {
         match self.input {
             None => {
                 let config = Config::load()?;
+                // this does nothing if the input file already exists, but
+                // simplifies the workflow after cloning the repo on a new computer
+                get_input(&config, DAY)?;
                 Ok(config.input_for(DAY))
             }
             Some(ref path) => Ok(path.clone()),
