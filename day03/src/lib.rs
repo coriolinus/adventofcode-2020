@@ -33,7 +33,7 @@ impl std::ops::Index<Point> for XWrapMap {
     }
 }
 
-fn count_trees(map: &XWrapMap, slope: Point) -> usize {
+fn count_trees(map: &XWrapMap, slope: Point) -> u64 {
     let mut check = map.0.top_left();
 
     let mut n_trees = 0;
@@ -68,10 +68,11 @@ pub fn part2(input: &Path) -> Result<(), Error> {
         Point::new(1, -2),
     ];
 
-    let product: usize = slopes
+    let product: u64 = slopes
         .iter()
         .map(|&slope| count_trees(&map, slope))
         .product();
+
     println!("product of trees encountered: {}", product);
 
     Ok(())
