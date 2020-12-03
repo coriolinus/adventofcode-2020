@@ -24,6 +24,82 @@ pub struct Map<T> {
     height: usize,
 }
 
+impl<T> Map<T> {
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn bottom_left(&self) -> Point {
+        Point::new(0, 0)
+    }
+
+    pub fn top_left(&self) -> Point {
+        Point::new(0, self.height.try_into().unwrap_or(i32::MAX) - 1)
+    }
+
+    pub fn bottom_right(&self) -> Point {
+        Point::new(self.width.try_into().unwrap_or(i32::MAX) - 1, 0)
+    }
+
+    pub fn top_right(&self) -> Point {
+        Point::new(
+            self.width.try_into().unwrap_or(i32::MAX) - 1,
+            self.height.try_into().unwrap_or(i32::MAX) - 1,
+        )
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.tiles.iter()
+    }
+
+    pub fn for_each<F>(&self, visit: F)
+    where
+        F: FnMut(&T),
+    {
+        self.tiles.iter().for_each(visit);
+    }
+
+    pub fn for_each_mut<F>(&mut self, update: F)
+    where
+        F: FnMut(&mut T),
+    {
+        self.tiles.iter_mut().for_each(update);
+    }
+
+    pub fn for_each_point<F>(&self, mut visit: F)
+    where
+        F: FnMut(&T, Point),
+    {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                visit(self.index((x, y)), (x, y).into());
+            }
+        }
+    }
+
+    pub fn for_each_point_mut<F>(&mut self, mut update: F)
+    where
+        F: FnMut(&mut T, Point),
+    {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                update(self.index_mut((x, y)), (x, y).into());
+            }
+        }
+    }
+
+    pub fn in_bounds(&self, point: Point) -> bool {
+        point.x >= 0
+            && point.y >= 0
+            && point.x < self.width.try_into().unwrap_or(i32::MAX)
+            && point.y < self.height.try_into().unwrap_or(i32::MAX)
+    }
+}
+
 impl<T: Clone + Default> Map<T> {
     pub fn new(width: usize, height: usize) -> Map<T> {
         Map {
@@ -131,15 +207,19 @@ where
     T: Clone + TryFrom<char>,
     <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
 {
-    // we actually impl<T, R> TryFrom<R> for Map<T> because there's a
-    // coherence conflict with the stdlib blanket impl
-    //
-    //   impl<T, U> std::convert::TryFrom<U> for T where U: std::convert::Into<T>;
-    //
-    // Because there's a chance that R also implements Into<Map<T>>, we can't do it.
-    //
-    // That doesn't stop us from doing it here, and implementing the official trait for
-    // a few concrete types
+    /// Try to convert the contents of a reader into a map.
+    ///
+    /// We don't actually `impl<T, R> TryFrom<R> for Map<T>` because there's a
+    /// coherence conflict with the stdlib blanket impl
+    ///
+    /// ```rust,ignore
+    /// impl<T, U> std::convert::TryFrom<U> for T where U: std::convert::Into<T>;
+    /// ```
+    ///
+    /// Because there's a chance that `R` also implements `Into<Map<T>>`, we can't do it.
+    ///
+    /// That doesn't stop us from doing it here, and implementing the official trait for
+    /// a few concrete types
     fn try_from<R>(input: R) -> Result<Self, MapConversionErr<T>>
     where
         R: std::io::BufRead,
@@ -226,7 +306,7 @@ impl<T> Index<(usize, usize)> for Map<T> {
 impl<T> Index<Point> for Map<T> {
     type Output = T;
 
-    /// Panics if point.x or point.y < 0
+    /// Panics if `point.x < 0 || point.y < 0`
     fn index(&self, point: Point) -> &T {
         assert!(
             point.x >= 0 && point.y >= 0,
@@ -243,7 +323,7 @@ impl<T> IndexMut<(usize, usize)> for Map<T> {
 }
 
 impl<T> IndexMut<Point> for Map<T> {
-    /// Panics if point.x or point.y < 0
+    /// Panics if `point.x < 0 || point.y < 0`
     fn index_mut(&mut self, point: Point) -> &mut T {
         assert!(
             point.x >= 0 && point.y >= 0,
@@ -253,91 +333,15 @@ impl<T> IndexMut<Point> for Map<T> {
     }
 }
 
-impl<T: Clone + Into<char>> fmt::Display for Map<T> {
+impl<T: fmt::Display> fmt::Display for Map<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for y in (0..self.height).rev() {
             for x in 0..self.width {
-                write!(f, "{}", self[(x, y)].clone().into())?;
+                self.index((x, y)).fmt(f)?;
             }
             write!(f, "\n")?;
         }
         Ok(())
-    }
-}
-
-impl<T> Map<T> {
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
-    pub fn bottom_left(&self) -> Point {
-        Point::new(0, 0)
-    }
-
-    pub fn top_left(&self) -> Point {
-        Point::new(0, self.height.try_into().unwrap_or(i32::MAX) - 1)
-    }
-
-    pub fn bottom_right(&self) -> Point {
-        Point::new(self.width.try_into().unwrap_or(i32::MAX) - 1, 0)
-    }
-
-    pub fn top_right(&self) -> Point {
-        Point::new(
-            self.width.try_into().unwrap_or(i32::MAX) - 1,
-            self.height.try_into().unwrap_or(i32::MAX) - 1,
-        )
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.tiles.iter()
-    }
-
-    pub fn for_each<F>(&self, visit: F)
-    where
-        F: FnMut(&T),
-    {
-        self.tiles.iter().for_each(visit);
-    }
-
-    pub fn for_each_mut<F>(&mut self, update: F)
-    where
-        F: FnMut(&mut T),
-    {
-        self.tiles.iter_mut().for_each(update);
-    }
-
-    pub fn for_each_point<F>(&self, mut visit: F)
-    where
-        F: FnMut(&T, Point),
-    {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                visit(self.index((x, y)), (x, y).into());
-            }
-        }
-    }
-
-    pub fn for_each_point_mut<F>(&mut self, mut update: F)
-    where
-        F: FnMut(&mut T, Point),
-    {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                update(self.index_mut((x, y)), (x, y).into());
-            }
-        }
-    }
-
-    pub fn in_bounds(&self, point: Point) -> bool {
-        point.x >= 0
-            && point.y >= 0
-            && point.x < self.width.try_into().unwrap_or(i32::MAX)
-            && point.y < self.height.try_into().unwrap_or(i32::MAX)
     }
 }
 
