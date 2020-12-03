@@ -74,22 +74,21 @@ impl<T> Map<T> {
     where
         F: FnMut(&T, Point),
     {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                visit(self.index((x, y)), (x, y).into());
-            }
-        }
+        self.tiles
+            .iter()
+            .enumerate()
+            .for_each(|(idx, tile)| visit(tile, self.index2point(idx).into()));
     }
 
     pub fn for_each_point_mut<F>(&mut self, mut update: F)
     where
         F: FnMut(&mut T, Point),
     {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                update(self.index_mut((x, y)), (x, y).into());
-            }
-        }
+        let index2point = self.make_index2point();
+        self.tiles
+            .iter_mut()
+            .enumerate()
+            .for_each(|(idx, tile)| update(tile, index2point(idx).into()));
     }
 
     pub fn in_bounds(&self, point: Point) -> bool {
@@ -97,6 +96,24 @@ impl<T> Map<T> {
             && point.y >= 0
             && point.x < self.width.try_into().unwrap_or(i32::MAX)
             && point.y < self.height.try_into().unwrap_or(i32::MAX)
+    }
+
+    /// convert a 2d point into a 1d index into the tiles
+    #[inline]
+    fn point2index(&self, x: usize, y: usize) -> usize {
+        x + (y * self.width)
+    }
+
+    /// convert a 1d index in the tiles into a 2d point
+    #[inline]
+    fn index2point(&self, idx: usize) -> (usize, usize) {
+        (idx % self.width, idx / self.width)
+    }
+
+    /// make a function which converts a 1d index in the tiles into a 2d point without borrowing self
+    fn make_index2point(&self) -> impl Fn(usize) -> (usize, usize) {
+        let width = self.width;
+        move |idx: usize| (idx % width, idx / width)
     }
 }
 
@@ -299,7 +316,7 @@ impl<T> Index<(usize, usize)> for Map<T> {
     type Output = T;
 
     fn index(&self, (x, y): (usize, usize)) -> &T {
-        self.tiles.index(x + (y * self.width))
+        self.tiles.index(self.point2index(x, y))
     }
 }
 
@@ -318,7 +335,7 @@ impl<T> Index<Point> for Map<T> {
 
 impl<T> IndexMut<(usize, usize)> for Map<T> {
     fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut T {
-        self.tiles.index_mut(x + (y * self.width))
+        self.tiles.index_mut(self.point2index(x, y))
     }
 }
 
