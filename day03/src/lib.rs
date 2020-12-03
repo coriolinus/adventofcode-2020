@@ -4,11 +4,9 @@ use std::convert::{TryFrom, TryInto};
 use std::path::Path;
 use thiserror::Error;
 
-#[derive(parse_display::Display, parse_display::FromStr, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 enum Tile {
-    #[display("#")]
     Tree,
-    #[display(".")]
     Clear,
 }
 
