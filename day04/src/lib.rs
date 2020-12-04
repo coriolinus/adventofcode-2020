@@ -17,6 +17,7 @@ struct Passport {
     byr: Option<u32>,
     iyr: Option<u32>,
     eyr: Option<u32>,
+    hgt_set: bool,
     hgt: Option<Height>,
     hcl: Option<String>,
     ecl: Option<String>,
@@ -28,7 +29,7 @@ impl Passport {
         self.byr.is_some()
             && self.iyr.is_some()
             && self.eyr.is_some()
-            && self.hgt.is_some()
+            && self.hgt_set
             && self.hcl.is_some()
             && self.ecl.is_some()
             && self.pid.is_some()
@@ -75,7 +76,10 @@ impl FromStr for Passport {
                 "byr" => passport.byr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
                 "iyr" => passport.iyr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
                 "eyr" => passport.eyr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
-                "hgt" => passport.hgt = Some(value.parse()?),
+                "hgt" => {
+                    passport.hgt_set = true;
+                    passport.hgt = value.parse().ok();
+                }
                 "hcl" => passport.hcl = Some(value.to_string()),
                 "ecl" => passport.ecl = Some(value.to_string()),
                 "pid" => passport.pid = Some(value.to_string()),
@@ -89,25 +93,12 @@ impl FromStr for Passport {
     }
 }
 
+#[derive(parse_display::FromStr, Debug)]
 enum Height {
+    #[display("{0}cm")]
     Cm(u32),
+    #[display("{0}in")]
     In(u32),
-}
-
-impl FromStr for Height {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.ends_with("cm") {
-            let n = s[..s.len() - 2].parse::<u32>().map_err(|e| e.to_string())?;
-            Ok(Self::Cm(n))
-        } else if s.ends_with("in") {
-            let n = s[..s.len() - 2].parse::<u32>().map_err(|e| e.to_string())?;
-            Ok(Self::In(n))
-        } else {
-            Err("unrecognized measurement".into())
-        }
-    }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {

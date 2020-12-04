@@ -382,6 +382,7 @@ dependencies = [
  "aoc2020",
  "color-eyre",
  "lazy_static",
+ "parse-display",
  "regex",
  "structopt",
  "thiserror",
