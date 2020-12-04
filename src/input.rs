@@ -8,19 +8,36 @@ use std::str::FromStr;
 ///
 /// Each line is treated as a separate record. Leading and trailing spaces
 /// are trimmed before being handed to the parser.
-pub fn parse<T>(path: &Path) -> std::io::Result<impl Iterator<Item = T>>
+///
+/// If any record cannot be parsed, this prints the parse error on stderr and stops iteration.
+pub fn parse<T>(path: &Path) -> std::io::Result<impl '_ + Iterator<Item = T>>
 where
     T: FromStr,
+    <T as FromStr>::Err: std::fmt::Display,
 {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut buf = String::new();
+    let mut line: usize = 0;
     Ok(std::iter::from_fn(move || {
         buf.clear();
-        reader
-            .read_line(&mut buf)
-            .ok()
-            .and_then(|_| T::from_str(buf.trim()).ok())
+        reader.read_line(&mut buf).ok().and_then(|_| {
+            line += 1;
+            match T::from_str(&buf) {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    eprintln!(
+                        "{}:{}: {}",
+                        path.file_name()
+                            .expect("File::open() didn't early return before now; qed")
+                            .to_string_lossy(),
+                        line,
+                        e
+                    );
+                    None
+                }
+            }
+        })
     })
     .fuse())
 }
@@ -32,13 +49,17 @@ where
 ///
 /// As whitespace is potentially significant, it is not adjusted in any way before being
 /// handed to the parser.
-pub fn parse_newline_sep<T>(path: &Path) -> std::io::Result<impl Iterator<Item = T>>
+///
+/// If any record cannot be parsed, this prints the parse error on stderr and stops iteration.
+pub fn parse_newline_sep<T>(path: &Path) -> std::io::Result<impl '_ + Iterator<Item = T>>
 where
     T: FromStr,
+    <T as FromStr>::Err: std::fmt::Display,
 {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);
     let mut buf = String::new();
+    let mut line: usize = 0;
 
     fn is_new_field(buf: &str) -> bool {
         let patterns = ["\n\n", "\n\r\n"];
@@ -54,6 +75,7 @@ where
     Ok(std::iter::from_fn(move || {
         buf.clear();
         while buf.is_empty() || !is_new_field(&buf) {
+            line += 1;
             if reader.read_line(&mut buf).ok()? == 0 {
                 break;
             }
@@ -61,7 +83,20 @@ where
         if buf.is_empty() {
             None
         } else {
-            T::from_str(&buf).ok()
+            match T::from_str(&buf) {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    eprintln!(
+                        "{}:{}: {}",
+                        path.file_name()
+                            .expect("File::open() didn't early return before now; qed")
+                            .to_string_lossy(),
+                        line - 1,
+                        e
+                    );
+                    None
+                }
+            }
         }
     })
     .fuse())
