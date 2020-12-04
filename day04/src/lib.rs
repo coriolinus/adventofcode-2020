@@ -2,7 +2,6 @@ use aoc2020::input::parse_newline_sep;
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use thiserror::Error;
@@ -14,69 +13,51 @@ lazy_static! {
 }
 
 #[derive(Default)]
-struct PassportRaw {
-    data: HashMap<String, String>,
+struct Passport {
+    byr: Option<u32>,
+    iyr: Option<u32>,
+    eyr: Option<u32>,
+    hgt: Option<Height>,
+    hcl: Option<String>,
+    ecl: Option<String>,
+    pid: Option<String>,
 }
 
-impl PassportRaw {
+impl Passport {
     fn has_northpole_fields(&self) -> bool {
-        let expect_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
-        expect_fields
-            .iter()
-            .all(|&field| self.data.contains_key(field))
+        self.byr.is_some()
+            && self.iyr.is_some()
+            && self.eyr.is_some()
+            && self.hgt.is_some()
+            && self.hcl.is_some()
+            && self.ecl.is_some()
+            && self.pid.is_some()
     }
 
-    fn parse_numeric_field_inner(&self, field: &str, min: u32, max: u32) -> Option<bool> {
-        let field = self.data.get(field)?;
-        let field = field.parse::<u32>().ok()?;
-
-        Some(field >= min && field <= max)
-    }
-
-    fn parse_numeric_field(&self, field: &str, min: u32, max: u32) -> bool {
-        self.parse_numeric_field_inner(field, min, max)
-            .unwrap_or_default()
-    }
-
-    fn is_valid_height_inner(&self) -> Option<bool> {
-        let hgt = self.data.get("hgt")?;
-        let hgt: Height = hgt.parse().ok()?;
-
-        Some(match hgt {
-            Height::Cm(cm) => cm >= 150 && cm <= 193,
-            Height::In(inch) => inch >= 59 && inch <= 76,
-        })
-    }
-
-    fn is_valid_height(&self) -> bool {
-        self.is_valid_height_inner().unwrap_or_default()
-    }
-
-    fn is_valid_re_inner(&self, field: &str, re: &Regex) -> Option<bool> {
-        let field = self.data.get(field)?;
-        Some(re.is_match(field))
-    }
-
-    fn is_valid_re(&self, field: &str, re: &Regex) -> bool {
-        self.is_valid_re_inner(field, re).unwrap_or_default()
+    fn is_valid_inner(&self) -> Option<bool> {
+        let valid = (1920..=2002).contains(&self.byr?)
+            && (2010..=2020).contains(&self.iyr?)
+            && (2020..=2030).contains(&self.eyr?)
+            && match self.hgt.as_ref()? {
+                Height::Cm(cm) => (150..=193).contains(cm),
+                Height::In(inch) => (59..=76).contains(inch),
+            }
+            && HAIR_COLOR_RE.is_match(self.hcl.as_ref()?)
+            && EYE_COLOR_RE.is_match(self.ecl.as_ref()?)
+            && PASSPORT_ID_RE.is_match(self.pid.as_ref()?);
+        Some(valid)
     }
 
     fn is_valid(&self) -> bool {
-        self.parse_numeric_field("byr", 1920, 2002)
-            && self.parse_numeric_field("iyr", 2010, 2020)
-            && self.parse_numeric_field("eyr", 2020, 2030)
-            && self.is_valid_height()
-            && self.is_valid_re("hcl", &HAIR_COLOR_RE)
-            && self.is_valid_re("ecl", &EYE_COLOR_RE)
-            && self.is_valid_re("pid", &PASSPORT_ID_RE)
+        self.is_valid_inner().unwrap_or_default()
     }
 }
 
-impl FromStr for PassportRaw {
+impl FromStr for Passport {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut pr = PassportRaw::default();
+        let mut passport = Passport::default();
 
         for field in s.split_whitespace() {
             let mut parts = field.split(':');
@@ -90,10 +71,21 @@ impl FromStr for PassportRaw {
                 Err(format!("too many parts in '{}'", field))?;
             }
 
-            pr.data.insert(key.to_string(), value.to_string());
+            match key {
+                "byr" => passport.byr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
+                "iyr" => passport.iyr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
+                "eyr" => passport.eyr = Some(value.parse::<u32>().map_err(|e| e.to_string())?),
+                "hgt" => passport.hgt = Some(value.parse()?),
+                "hcl" => passport.hcl = Some(value.to_string()),
+                "ecl" => passport.ecl = Some(value.to_string()),
+                "pid" => passport.pid = Some(value.to_string()),
+                _ => {
+                    // don't care about extra fields
+                }
+            }
         }
 
-        Ok(pr)
+        Ok(passport)
     }
 }
 
@@ -119,82 +111,18 @@ impl FromStr for Height {
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let valid = parse_newline_sep::<PassportRaw>(input)?
-        .filter(|pr| pr.has_northpole_fields())
+    let valid = parse_newline_sep::<Passport>(input)?
+        .filter(|passport| passport.has_northpole_fields())
         .count();
     println!("count (northpole): {}", valid);
     Ok(())
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
-    let valid = parse_newline_sep::<PassportRaw>(input)?
-        .filter(|pr| pr.is_valid())
+    let valid = parse_newline_sep::<Passport>(input)?
+        .filter(|passport| passport.is_valid())
         .count();
     println!("valid: {}", valid);
-    Ok(())
-}
-
-pub fn invalidities(input: &Path) -> Result<(), Error> {
-    let mut byr = HashSet::new();
-    let mut iyr = HashSet::new();
-    let mut eyr = HashSet::new();
-    let mut hgt = HashSet::new();
-    let mut hcl = HashSet::new();
-    let mut ecl = HashSet::new();
-    let mut pid = HashSet::new();
-
-    for passport in parse_newline_sep::<PassportRaw>(input)? {
-        if !passport.parse_numeric_field("byr", 1920, 2002) {
-            if let Some(invalid) = passport.data.get("byr") {
-                byr.insert(invalid.clone());
-            }
-        }
-        if !passport.parse_numeric_field("iyr", 2010, 2020) {
-            if let Some(invalid) = passport.data.get("iyr") {
-                iyr.insert(invalid.clone());
-            }
-        }
-        if !passport.parse_numeric_field("eyr", 2020, 2030) {
-            if let Some(invalid) = passport.data.get("eyr") {
-                eyr.insert(invalid.clone());
-            }
-        }
-        if !passport.is_valid_height() {
-            if let Some(invalid) = passport.data.get("hgt") {
-                hgt.insert(invalid.clone());
-            }
-        }
-        if !passport.is_valid_re("hcl", &HAIR_COLOR_RE) {
-            if let Some(invalid) = passport.data.get("hcl") {
-                hcl.insert(invalid.clone());
-            }
-        }
-        if !passport.is_valid_re("ecl", &EYE_COLOR_RE) {
-            if let Some(invalid) = passport.data.get("ecl") {
-                ecl.insert(invalid.clone());
-            }
-        }
-        if !passport.is_valid_re("pid", &PASSPORT_ID_RE) {
-            if let Some(invalid) = passport.data.get("pid") {
-                pid.insert(invalid.clone());
-            }
-        }
-    }
-
-    fn invalid(name: &str, set: HashSet<String>) {
-        let mut v: Vec<_> = set.into_iter().collect();
-        v.sort();
-        println!("invalid {}:\n{:?}\n", name, v);
-    }
-
-    invalid("birth years", byr);
-    invalid("issue years", iyr);
-    invalid("expiration years", eyr);
-    invalid("heights", hgt);
-    invalid("hair colors", hcl);
-    invalid("eye colors", ecl);
-    invalid("passport ids", pid);
-
     Ok(())
 }
 
