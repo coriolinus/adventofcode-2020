@@ -20,6 +20,11 @@ struct RunArgs {
     /// run part 2
     #[structopt(long)]
     part2: bool,
+
+    /// emit json of valid data to stdout
+    #[cfg(feature = "emit_json")]
+    #[structopt(long)]
+    emit_json: bool,
 }
 
 impl RunArgs {
@@ -47,6 +52,12 @@ fn main() -> Result<()> {
     }
     if args.part2 {
         part2(&input_path)?;
+    }
+    #[cfg(feature = "emit_json")]
+    {
+        if args.emit_json {
+            day04::emit_json(&input_path)?;
+        }
     }
     Ok(())
 }

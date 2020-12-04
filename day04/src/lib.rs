@@ -6,6 +6,9 @@ use std::path::Path;
 use std::str::FromStr;
 use thiserror::Error;
 
+#[cfg(feature = "emit_json")]
+use serde::{Deserialize, Serialize};
+
 lazy_static! {
     static ref HAIR_COLOR_RE: Regex = Regex::new(r"^#[0-9a-f]{6}$").unwrap();
     static ref EYE_COLOR_RE: Regex = Regex::new(r"^(amb|blu|brn|gry|grn|hzl|oth)$").unwrap();
@@ -13,14 +16,23 @@ lazy_static! {
 }
 
 #[derive(Default)]
+#[cfg_attr(feature = "emit_json", derive(Serialize, Deserialize))]
 struct Passport {
+    #[cfg_attr(feature = "emit_json", serde(rename = "birth_year", alias = "byr"))]
     byr: Option<u32>,
+    #[cfg_attr(feature = "emit_json", serde(rename = "issued_year", alias = "iyr"))]
     iyr: Option<u32>,
+    #[cfg_attr(feature = "emit_json", serde(rename = "expiry_year", alias = "eyr"))]
     eyr: Option<u32>,
+    #[cfg_attr(feature = "emit_json", serde(skip))]
     hgt_set: bool,
+    #[cfg_attr(feature = "emit_json", serde(rename = "height", alias = "hgt"))]
     hgt: Option<Height>,
+    #[cfg_attr(feature = "emit_json", serde(rename = "hair_color", alias = "hcl"))]
     hcl: Option<String>,
+    #[cfg_attr(feature = "emit_json", serde(rename = "eye_color", alias = "ecl"))]
     ecl: Option<String>,
+    #[cfg_attr(feature = "emit_json", serde(rename = "passport_id", alias = "pid"))]
     pid: Option<String>,
 }
 
@@ -94,6 +106,11 @@ impl FromStr for Passport {
 }
 
 #[derive(parse_display::FromStr, Debug)]
+#[cfg_attr(
+    feature = "emit_json",
+    derive(Serialize, Deserialize),
+    serde(tag = "unit", content = "qty", rename_all = "snake_case")
+)]
 enum Height {
     #[display("{0}cm")]
     Cm(u32),
@@ -117,8 +134,27 @@ pub fn part2(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+#[cfg(feature = "emit_json")]
+pub fn emit_json(input: &Path) -> Result<(), Error> {
+    use std::io::Write;
+
+    let writer = std::io::stdout();
+    let writer = writer.lock();
+    let mut writer = std::io::BufWriter::new(writer);
+
+    for passport in parse_newline_sep::<Passport>(input)?.filter(|passport| passport.is_valid()) {
+        serde_json::to_writer(&mut writer, &passport)?;
+    }
+    writer.flush()?;
+
+    Ok(())
+}
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[cfg(feature = "emit_json")]
+    #[error("json")]
+    Json(#[from] serde_json::error::Error),
 }
