@@ -19,21 +19,26 @@ struct PassportRaw {
 }
 
 impl PassportRaw {
-    fn is_northpole(&self) -> bool {
+    fn has_northpole_fields(&self) -> bool {
         let expect_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
         expect_fields
             .iter()
             .all(|&field| self.data.contains_key(field))
     }
 
-    fn parse_numeric_field(&self, field: &str, min: u32, max: u32) -> Option<bool> {
+    fn parse_numeric_field_inner(&self, field: &str, min: u32, max: u32) -> Option<bool> {
         let field = self.data.get(field)?;
         let field = field.parse::<u32>().ok()?;
 
         Some(field >= min && field <= max)
     }
 
-    fn is_valid_height(&self) -> Option<bool> {
+    fn parse_numeric_field(&self, field: &str, min: u32, max: u32) -> bool {
+        self.parse_numeric_field_inner(field, min, max)
+            .unwrap_or_default()
+    }
+
+    fn is_valid_height_inner(&self) -> Option<bool> {
         let hgt = self.data.get("hgt")?;
         let hgt: Height = hgt.parse().ok()?;
 
@@ -43,24 +48,27 @@ impl PassportRaw {
         })
     }
 
-    fn is_valid_re(&self, field: &str, re: &Regex) -> Option<bool> {
+    fn is_valid_height(&self) -> bool {
+        self.is_valid_height_inner().unwrap_or_default()
+    }
+
+    fn is_valid_re_inner(&self, field: &str, re: &Regex) -> Option<bool> {
         let field = self.data.get(field)?;
         Some(re.is_match(field))
     }
 
+    fn is_valid_re(&self, field: &str, re: &Regex) -> bool {
+        self.is_valid_re_inner(field, re).unwrap_or_default()
+    }
+
     fn is_valid(&self) -> bool {
         self.parse_numeric_field("byr", 1920, 2002)
-            .unwrap_or_default()
-            && self
-                .parse_numeric_field("iyr", 2010, 2020)
-                .unwrap_or_default()
-            && self
-                .parse_numeric_field("eyr", 2020, 2030)
-                .unwrap_or_default()
-            && self.is_valid_height().unwrap_or_default()
-            && self.is_valid_re("hcl", &HAIR_COLOR_RE).unwrap_or_default()
-            && self.is_valid_re("ecl", &EYE_COLOR_RE).unwrap_or_default()
-            && self.is_valid_re("pid", &PASSPORT_ID_RE).unwrap_or_default()
+            && self.parse_numeric_field("iyr", 2010, 2020)
+            && self.parse_numeric_field("eyr", 2020, 2030)
+            && self.is_valid_height()
+            && self.is_valid_re("hcl", &HAIR_COLOR_RE)
+            && self.is_valid_re("ecl", &EYE_COLOR_RE)
+            && self.is_valid_re("pid", &PASSPORT_ID_RE)
     }
 }
 
@@ -112,7 +120,7 @@ impl FromStr for Height {
 
 pub fn part1(input: &Path) -> Result<(), Error> {
     let valid = parse_newline_sep::<PassportRaw>(input)?
-        .filter(|pr| pr.is_northpole())
+        .filter(|pr| pr.has_northpole_fields())
         .count();
     println!("count (northpole): {}", valid);
     Ok(())
