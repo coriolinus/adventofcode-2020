@@ -1,9 +1,9 @@
 use aoc2020::{config::Config, website::get_input};
-use day04::{part1, part2};
+use day04::{invalidities, part1, part2};
 
 use color_eyre::eyre::Result;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const DAY: u8 = 4;
 
@@ -20,6 +20,10 @@ struct RunArgs {
     /// run part 2
     #[structopt(long)]
     part2: bool,
+
+    /// show invalidities
+    #[structopt(long)]
+    invalidities: bool,
 }
 
 impl RunArgs {
@@ -47,6 +51,9 @@ fn main() -> Result<()> {
     }
     if args.part2 {
         part2(&input_path)?;
+    }
+    if args.invalidities {
+        invalidities(&input_path)?;
     }
     Ok(())
 }

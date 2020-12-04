@@ -2,7 +2,7 @@ use aoc2020::input::parse_newline_sep;
 
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use thiserror::Error;
@@ -131,6 +131,70 @@ pub fn part2(input: &Path) -> Result<(), Error> {
         .filter(|pr| pr.is_valid())
         .count();
     println!("valid: {}", valid);
+    Ok(())
+}
+
+pub fn invalidities(input: &Path) -> Result<(), Error> {
+    let mut byr = HashSet::new();
+    let mut iyr = HashSet::new();
+    let mut eyr = HashSet::new();
+    let mut hgt = HashSet::new();
+    let mut hcl = HashSet::new();
+    let mut ecl = HashSet::new();
+    let mut pid = HashSet::new();
+
+    for passport in parse_newline_sep::<PassportRaw>(input)? {
+        if !passport.parse_numeric_field("byr", 1920, 2002) {
+            if let Some(invalid) = passport.data.get("byr") {
+                byr.insert(invalid.clone());
+            }
+        }
+        if !passport.parse_numeric_field("iyr", 2010, 2020) {
+            if let Some(invalid) = passport.data.get("iyr") {
+                iyr.insert(invalid.clone());
+            }
+        }
+        if !passport.parse_numeric_field("eyr", 2020, 2030) {
+            if let Some(invalid) = passport.data.get("eyr") {
+                eyr.insert(invalid.clone());
+            }
+        }
+        if !passport.is_valid_height() {
+            if let Some(invalid) = passport.data.get("hgt") {
+                hgt.insert(invalid.clone());
+            }
+        }
+        if !passport.is_valid_re("hcl", &HAIR_COLOR_RE) {
+            if let Some(invalid) = passport.data.get("hcl") {
+                hcl.insert(invalid.clone());
+            }
+        }
+        if !passport.is_valid_re("ecl", &EYE_COLOR_RE) {
+            if let Some(invalid) = passport.data.get("ecl") {
+                ecl.insert(invalid.clone());
+            }
+        }
+        if !passport.is_valid_re("pid", &PASSPORT_ID_RE) {
+            if let Some(invalid) = passport.data.get("pid") {
+                pid.insert(invalid.clone());
+            }
+        }
+    }
+
+    fn invalid(name: &str, set: HashSet<String>) {
+        let mut v: Vec<_> = set.into_iter().collect();
+        v.sort();
+        println!("invalid {}:\n{:?}\n", name, v);
+    }
+
+    invalid("birth years", byr);
+    invalid("issue years", iyr);
+    invalid("expiration years", eyr);
+    invalid("heights", hgt);
+    invalid("hair colors", hcl);
+    invalid("eye colors", ecl);
+    invalid("passport ids", pid);
+
     Ok(())
 }
 
