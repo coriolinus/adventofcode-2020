@@ -14,7 +14,7 @@ struct RunArgs \{
     input: Option<PathBuf>,
 
     /// skip part 1
-    #[structopt(long = "no-part1")]
+    #[structopt(long)]
     no_part1: bool,
 
     /// run part 2
