@@ -30,7 +30,7 @@ where
                     Ok(t) => Some(t),
                     Err(e) => {
                         eprintln!(
-                            "{}:{}: {} for \"{}\"",
+                            "{}:{}: {} for {:?}",
                             path.file_name()
                                 .expect("File::open() didn't early return before now; qed")
                                 .to_string_lossy(),
@@ -92,12 +92,13 @@ where
                 Ok(t) => Some(t),
                 Err(e) => {
                     eprintln!(
-                        "{}:{}: {}",
+                        "{}:{}: {} for {:?}",
                         path.file_name()
                             .expect("File::open() didn't early return before now; qed")
                             .to_string_lossy(),
                         line - 1,
-                        e
+                        e,
+                        buf,
                     );
                     None
                 }
