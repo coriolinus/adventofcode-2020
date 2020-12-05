@@ -5,34 +5,27 @@ use thiserror::Error;
 
 #[derive(Debug, parse_display::Display, parse_display::FromStr)]
 #[from_str(regex = "^(?P<0>[FB]{7}[LR]{3})$")]
-struct BinarySpacePartition(String);
+pub struct BoardingPass(String);
 
-fn partition(chars: impl Iterator<Item = char>, n_chars: u32, lower: char, higher: char) -> u8 {
-    let mut min = 0;
-    let mut max = 2_u8.pow(n_chars) - 1;
-    for ch in chars.take(n_chars as usize) {
-        let half_range = (max - min) / 2;
-        match ch {
-            l if l == lower => max = min + half_range,
-            h if h == higher => min = max - half_range,
-            _ => unreachable!("guaranteed by the parsing regex"),
+impl BoardingPass {
+    pub fn row(&self) -> u16 {
+        self.seat_id() >> 3
+    }
+
+    pub fn col(&self) -> u16 {
+        self.seat_id() & 0b111
+    }
+
+    fn seat_id(&self) -> u16 {
+        let mut out = 0;
+
+        for (idx, ch) in self.0.chars().rev().enumerate() {
+            if ch == 'B' || ch == 'R' {
+                out |= 1 << idx;
+            }
         }
-    }
-    assert_eq!(min, max, "must have partitioned the range to a single row");
-    min
-}
 
-impl BinarySpacePartition {
-    fn row(&self) -> u8 {
-        partition(self.0.chars(), 7, 'F', 'B')
-    }
-
-    fn col(&self) -> u8 {
-        partition(self.0.chars().skip(7), 3, 'L', 'R')
-    }
-
-    fn seat_id(&self) -> u32 {
-        (self.row() as u32 * 8) + self.col() as u32
+        out
     }
 }
 
@@ -46,7 +39,7 @@ fn find_empty_seat_id(map: &[bool]) -> Option<usize> {
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let highest = parse::<BinarySpacePartition>(input)?
+    let highest = parse::<BoardingPass>(input)?
         .map(|bsp| bsp.seat_id())
         .max()
         .ok_or(Error::SolutionNotFound)?;
@@ -56,7 +49,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 
 pub fn part2(input: &Path) -> Result<(), Error> {
     let mut map = vec![false; 128 * 8];
-    for boarding_pass in parse::<BinarySpacePartition>(input)? {
+    for boarding_pass in parse::<BoardingPass>(input)? {
         map[boarding_pass.seat_id() as usize] = true;
     }
 
@@ -78,8 +71,8 @@ pub enum Error {
 mod test {
     use super::*;
 
-    fn check_seat(seat: &str, expect_row: u8, expect_col: u8, expect_id: u32) {
-        let boarding_pass: BinarySpacePartition = seat.parse().unwrap();
+    fn check_seat(seat: &str, expect_row: u16, expect_col: u16, expect_id: u16) {
+        let boarding_pass: BoardingPass = seat.parse().unwrap();
         assert_eq!(boarding_pass.row(), expect_row);
         assert_eq!(boarding_pass.col(), expect_col);
         assert_eq!(boarding_pass.seat_id(), expect_id);
