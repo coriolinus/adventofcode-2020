@@ -23,18 +23,23 @@ where
         buf.clear();
         reader.read_line(&mut buf).ok().and_then(|_| {
             line += 1;
-            match T::from_str(&buf) {
-                Ok(t) => Some(t),
-                Err(e) => {
-                    eprintln!(
-                        "{}:{}: {}",
-                        path.file_name()
-                            .expect("File::open() didn't early return before now; qed")
-                            .to_string_lossy(),
-                        line,
-                        e
-                    );
-                    None
+            if buf.is_empty() {
+                None
+            } else {
+                match T::from_str(&buf.trim()) {
+                    Ok(t) => Some(t),
+                    Err(e) => {
+                        eprintln!(
+                            "{}:{}: {} for \"{}\"",
+                            path.file_name()
+                                .expect("File::open() didn't early return before now; qed")
+                                .to_string_lossy(),
+                            line,
+                            e,
+                            buf,
+                        );
+                        None
+                    }
                 }
             }
         })
