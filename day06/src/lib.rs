@@ -19,14 +19,14 @@ impl std::str::FromStr for CustomsDeclarationForm {
 }
 
 impl CustomsDeclarationForm {
-    fn merge(&self) -> HashSet<char> {
+    fn union(&self) -> HashSet<char> {
         self.0.iter().fold(HashSet::new(), |mut acc, elem| {
             acc.extend(elem);
             acc
         })
     }
 
-    fn merge_all(&self) -> HashSet<char> {
+    fn intersection(&self) -> HashSet<char> {
         self.0
             .iter()
             .fold(None, |acc, elem| match acc {
@@ -39,17 +39,17 @@ impl CustomsDeclarationForm {
 
 pub fn part1(input: &Path) -> Result<(), Error> {
     let sum_of_counts: usize = parse_newline_sep::<CustomsDeclarationForm>(input)?
-        .map(|cdf| cdf.merge().len())
+        .map(|cdf| cdf.union().len())
         .sum();
-    println!("sum of counts: {}", sum_of_counts);
+    println!("sum of union counts: {}", sum_of_counts);
     Ok(())
 }
 
 pub fn part2(input: &Path) -> Result<(), Error> {
     let sum_of_counts: usize = parse_newline_sep::<CustomsDeclarationForm>(input)?
-        .map(|cdf| cdf.merge_all().len())
+        .map(|cdf| cdf.intersection().len())
         .sum();
-    println!("sum of counts (part 2): {}", sum_of_counts);
+    println!("sum of intersection counts: {}", sum_of_counts);
     Ok(())
 }
 
