@@ -25,6 +25,16 @@ impl CustomsDeclarationForm {
             acc
         })
     }
+
+    fn merge_all(&self) -> HashSet<char> {
+        self.0
+            .iter()
+            .fold(None, |acc, elem| match acc {
+                None => Some(elem.clone()),
+                Some(acc) => Some(acc.intersection(elem).copied().collect()),
+            })
+            .unwrap_or_default()
+    }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
@@ -35,8 +45,12 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    let sum_of_counts: usize = parse_newline_sep::<CustomsDeclarationForm>(input)?
+        .map(|cdf| cdf.merge_all().len())
+        .sum();
+    println!("sum of counts (part 2): {}", sum_of_counts);
+    Ok(())
 }
 
 #[derive(Debug, Error)]
