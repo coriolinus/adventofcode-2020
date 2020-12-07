@@ -20,6 +20,10 @@ struct RunArgs {
     /// run part 2
     #[structopt(long)]
     part2: bool,
+
+    /// calculate the N bags with highest and lowest contained bags
+    #[structopt(long)]
+    exhaustive_n: Option<usize>,
 }
 
 impl RunArgs {
@@ -47,6 +51,9 @@ fn main() -> Result<()> {
     }
     if args.part2 {
         part2(&input_path)?;
+    }
+    if let Some(n) = args.exhaustive_n {
+        day07::exhaustive_quantize(&input_path, n)?;
     }
     Ok(())
 }

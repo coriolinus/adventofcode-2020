@@ -103,6 +103,58 @@ pub fn part2(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+fn query_rules_memoize(
+    rules: &HashMap<String, LuggageRule>,
+    memo: &mut HashMap<String, u64>,
+    color: &str,
+) -> u64 {
+    let rule = match rules.get(color) {
+        None => return 0,
+        Some(rule) => rule,
+    };
+
+    let mut qty_contained = 0;
+
+    for (qty, color) in &rule.contents {
+        let qty = *qty as u64;
+        qty_contained += qty;
+        let per_color = match memo.get(color) {
+            Some(n) => *n,
+            None => query_rules_memoize(rules, memo, color),
+        };
+        qty_contained += qty * per_color;
+    }
+
+    memo.insert(color.to_string(), qty_contained);
+    qty_contained
+}
+
+pub fn exhaustive_quantize(input: &Path, n: usize) -> Result<(), Error> {
+    let rules: HashMap<_, _> = parse::<LuggageRule>(input)?
+        .map(|rule| (rule.outer_color.clone(), rule))
+        .collect();
+
+    let mut exhaustive_contents = HashMap::new();
+    for color in rules.keys() {
+        query_rules_memoize(&rules, &mut exhaustive_contents, color);
+    }
+
+    let mut exhaustive: Vec<_> = exhaustive_contents.iter().map(|(k, v)| (v, k)).collect();
+    exhaustive.sort();
+
+    for (n, color) in exhaustive.iter().rev().take(n) {
+        println!("{:>30}: {:6}", color, n);
+    }
+    println!("{:>31}", "...");
+    println!("{:>30}: {:6}", MY_BAG, exhaustive_contents[MY_BAG]);
+    println!("{:>31}", "...");
+    for (n, color) in exhaustive.iter().take(n).rev() {
+        println!("{:>30}: {:6}", color, n);
+    }
+
+    Ok(())
+}
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
