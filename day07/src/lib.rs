@@ -76,8 +76,31 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+fn query_rules(rules: &HashMap<String, LuggageRule>, color: &str) -> u64 {
+    let rule = match rules.get(color) {
+        None => return 0,
+        Some(rule) => rule,
+    };
+
+    let mut qty_contained = 0_u64;
+
+    for (qty, color) in &rule.contents {
+        let qty = *qty as u64;
+        qty_contained += qty;
+        qty_contained += qty * query_rules(rules, color);
+    }
+
+    qty_contained
+}
+
+pub fn part2(input: &Path) -> Result<(), Error> {
+    let rules: HashMap<_, _> = parse::<LuggageRule>(input)?
+        .map(|rule| (rule.outer_color.clone(), rule))
+        .collect();
+    let total_contained = query_rules(&rules, MY_BAG);
+    println!("my bag contains {} other bags", total_contained);
+
+    Ok(())
 }
 
 #[derive(Debug, Error)]
