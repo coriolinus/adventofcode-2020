@@ -81,7 +81,7 @@ impl FromStr for Passport {
                 .next()
                 .ok_or_else(|| format!("missing value in '{}'", field))?;
             if parts.next().is_some() {
-                Err(format!("too many parts in '{}'", field))?;
+                return Err(format!("too many parts in '{}'", field));
             }
 
             match key {
