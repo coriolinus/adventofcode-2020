@@ -12,6 +12,23 @@ pub enum Operation {
     Nop,
 }
 
+impl Operation {
+    fn is_jmp_nop(&self) -> bool {
+        match self {
+            Self::Jmp | Self::Nop => true,
+            _ => false,
+        }
+    }
+
+    fn invert_jmp_nop(&mut self) {
+        match self {
+            Self::Jmp => *self = Self::Nop,
+            Self::Nop => *self = Self::Jmp,
+            Self::Acc => {}
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::Display, parse_display::FromStr)]
 #[display("{operation} {argument}")]
 pub struct Instruction {
@@ -80,6 +97,37 @@ impl HandheldGameConsole {
     }
 }
 
+/// Seek a mutation of the program which completes successfully.
+///
+/// For each Jmp or Nop in the instruction set, create a computer which runs a modified version
+/// of the instructions with that instruction's operation reversed.
+///
+/// If any such computer concludes with `InstructionPointerOutOfRange(n, n)`, then that computer's
+/// run was successful; returns the computer's accumulator.
+pub fn mutate_seeking_success(instructions: Vec<Instruction>) -> Result<i64, Error> {
+    use std::convert::TryInto;
+
+    for (idx, instruction) in instructions.iter().enumerate() {
+        if instruction.operation.is_jmp_nop() {
+            let mut modified_instructions = instructions.clone();
+            modified_instructions[idx].operation.invert_jmp_nop();
+
+            let mut computer = HandheldGameConsole::new(modified_instructions);
+            if let Err(Error::InstructionPointerOutOfRange(ip, size)) = computer.run() {
+                if size
+                    .try_into()
+                    .map(|size: i64| size == ip)
+                    .unwrap_or_default()
+                {
+                    return Ok(computer.accumulator);
+                }
+            }
+        }
+    }
+
+    Err(Error::ExhaustiveMutationSearchFailed)
+}
+
 pub fn part1(input: &Path) -> Result<(), Error> {
     let instructions: Vec<Instruction> = parse(input)?.collect();
     let mut computer = HandheldGameConsole::new(instructions);
@@ -88,8 +136,11 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    let instructions: Vec<Instruction> = parse(input)?.collect();
+    let acc = mutate_seeking_success(instructions)?;
+    println!("accumulator on success: {}", acc);
+    Ok(())
 }
 
 #[derive(Debug, Error)]
@@ -98,4 +149,6 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("instruction pointer out of range: must be in 0..{1}; is {0}")]
     InstructionPointerOutOfRange(i64, usize),
+    #[error("no mutation found which terminates successfully")]
+    ExhaustiveMutationSearchFailed,
 }
