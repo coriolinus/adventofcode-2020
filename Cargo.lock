@@ -424,6 +424,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "day08"
+version = "0.1.0"
+dependencies = [
+ "aoc2020",
+ "bitvec",
+ "color-eyre",
+ "parse-display",
+ "structopt",
+ "thiserror",
+]
+
+[[package]]
 name = "dirs"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

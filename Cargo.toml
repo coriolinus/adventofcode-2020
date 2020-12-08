@@ -21,4 +21,4 @@ toml = "0.5.7"
 toml_edit = "0.2.0"
 
 [workspace]
-members = ["day01", "day02", "day03", "day04", "day05", "day06", "day07"]
+members = ["day01", "day02", "day03", "day04", "day05", "day06", "day07", "day08"]
