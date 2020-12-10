@@ -49,22 +49,15 @@ fn count_legal_adapter_arrangements(adapters: &[u32]) -> usize {
 
     // we know the adapter chain isn't empty, so it's safe to unwrap here
     let unused_adapters = make_adapter_chain(adapters).unwrap();
-    let device_jolts = unused_adapters[unused_adapters.len() - 1];
 
     let mut memoize = Vec::with_capacity(unused_adapters.len());
     let mut adapters = vec![unused_adapters[0]];
     let unused_adapters = &unused_adapters[1..];
 
-    count_legal_adapter_arrangements_memoized(
-        device_jolts,
-        &mut adapters,
-        unused_adapters,
-        &mut memoize,
-    )
+    count_legal_adapter_arrangements_memoized(&mut adapters, unused_adapters, &mut memoize)
 }
 
 fn count_legal_adapter_arrangements_memoized(
-    device_jolts: u32,
     adapters: &mut Vec<u32>,
     unused_adapters: &[u32],
     memoize: &mut Vec<usize>,
@@ -74,7 +67,7 @@ fn count_legal_adapter_arrangements_memoized(
     }
 
     let n_legal_successors =
-        count_legal_adapter_arrangements_inner(device_jolts, adapters, unused_adapters, memoize);
+        count_legal_adapter_arrangements_inner(adapters, unused_adapters, memoize);
 
     if memoize.len() == unused_adapters.len() {
         memoize.push(n_legal_successors);
@@ -85,7 +78,6 @@ fn count_legal_adapter_arrangements_memoized(
 
 // precondition: never call with empty `adapters`
 fn count_legal_adapter_arrangements_inner(
-    device_jolts: u32,
     adapters: &mut Vec<u32>,
     mut unused_adapters: &[u32],
     memoize: &mut Vec<usize>,
@@ -98,12 +90,8 @@ fn count_legal_adapter_arrangements_inner(
     while !unused_adapters.is_empty() && unused_adapters[0] <= adapters[adapters.len() - 1] + 3 {
         adapters.push(unused_adapters[0]);
         unused_adapters = &unused_adapters[1..];
-        n_legal_successors += count_legal_adapter_arrangements_memoized(
-            device_jolts,
-            adapters,
-            unused_adapters,
-            memoize,
-        );
+        n_legal_successors +=
+            count_legal_adapter_arrangements_memoized(adapters, unused_adapters, memoize);
         adapters.pop();
     }
 
