@@ -26,5 +26,5 @@ input. Inputs are saved to a canonical directory. The sub-crate will be named fo
 so it can then be run like
 
 ```bash
-cargo run -p day01 --part2
+cargo run -p day01 -- --part2
 ```
