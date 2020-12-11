@@ -1,9 +1,10 @@
-use crate::geometry::{Direction, Point};
+use crate::geometry::{tile::DisplayWidth, Direction, Point};
 use bitvec::bitvec;
 use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::str::FromStr;
 
 /// A Map keeps track of a tile grid.
 ///
@@ -217,40 +218,20 @@ where
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MapConversionErr<T>
-where
-    T: TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
-{
-    TileConversion(<T as TryFrom<char>>::Error),
+#[derive(Debug, thiserror::Error)]
+pub enum MapConversionErr {
+    #[error("converting tile")]
+    TileConversion(#[source] Box<dyn 'static + std::error::Error + Send + Sync>),
+    #[error("map must be rectangular")]
     NotRectangular,
-}
-
-impl<T> fmt::Display for MapConversionErr<T>
-where
-    T: TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::TileConversion(err) => write!(f, "{:?}", err),
-            Self::NotRectangular => write!(f, "maps must be rectangular"),
-        }
-    }
-}
-
-impl<T> std::error::Error for MapConversionErr<T>
-where
-    T: fmt::Debug + TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
-{
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl<T> Map<T>
 where
-    T: Clone + TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
+    T: Clone + DisplayWidth + FromStr,
+    <T as FromStr>::Err: 'static + std::error::Error + Send + Sync,
 {
     /// Try to convert the contents of a reader into a map.
     ///
@@ -265,18 +246,21 @@ where
     ///
     /// That doesn't stop us from doing it here, and implementing the official trait for
     /// a few concrete types
-    fn try_from<R>(input: R) -> Result<Self, MapConversionErr<T>>
+    fn try_from<R>(input: R) -> Result<Self, MapConversionErr>
     where
         R: std::io::BufRead,
     {
         let mut arr = Vec::new();
 
         for line in input.lines() {
-            let line = line.unwrap();
+            let line = line?;
 
-            let mut row = Vec::with_capacity(line.len());
-            for ch in line.chars() {
-                row.push(T::try_from(ch).map_err(MapConversionErr::TileConversion)?);
+            let mut row = Vec::with_capacity(line.len() / T::DISPLAY_WIDTH);
+            for chunk in T::chunks(&line) {
+                row.push(
+                    T::from_str(&chunk)
+                        .map_err(|err| MapConversionErr::TileConversion(Box::new(err)))?,
+                );
             }
             if !row.is_empty() {
                 arr.push(row);
@@ -299,10 +283,10 @@ where
 
 impl<T> TryFrom<&str> for Map<T>
 where
-    T: Clone + TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
+    T: Clone + DisplayWidth + FromStr,
+    <T as FromStr>::Err: 'static + std::error::Error + Send + Sync,
 {
-    type Error = MapConversionErr<T>;
+    type Error = MapConversionErr;
 
     /// the input should be in natural graphical order:
     /// its first characters are the top left.
@@ -313,10 +297,10 @@ where
 
 impl<T> TryFrom<std::fs::File> for Map<T>
 where
-    T: Clone + TryFrom<char>,
-    <T as TryFrom<char>>::Error: std::fmt::Debug + Clone + PartialEq + Eq,
+    T: Clone + DisplayWidth + FromStr,
+    <T as FromStr>::Err: 'static + std::error::Error + Send + Sync,
 {
-    type Error = MapConversionErr<T>;
+    type Error = MapConversionErr;
 
     /// the input should be in natural graphical order:
     /// its first characters are the top left.
@@ -327,8 +311,8 @@ where
 
 impl<T> TryFrom<&std::path::Path> for Map<T>
 where
-    T: 'static + fmt::Debug + Clone + TryFrom<char>,
-    <T as TryFrom<char>>::Error: Send + Sync + std::fmt::Debug + Clone + PartialEq + Eq,
+    T: Clone + DisplayWidth + FromStr,
+    <T as FromStr>::Err: 'static + std::error::Error + Send + Sync,
 {
     type Error = std::io::Error;
 
@@ -378,11 +362,14 @@ impl<T> IndexMut<Point> for Map<T> {
     }
 }
 
-impl<T: fmt::Display> fmt::Display for Map<T> {
+impl<T> fmt::Display for Map<T>
+where
+    T: fmt::Display + DisplayWidth,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for y in (0..self.height).rev() {
             for x in 0..self.width {
-                self.index((x, y)).fmt(f)?;
+                write!(f, "{:width$}", self.index((x, y)), width = T::DISPLAY_WIDTH)?;
             }
             write!(f, "\n")?;
         }

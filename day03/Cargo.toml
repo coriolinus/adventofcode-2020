@@ -7,5 +7,6 @@ edition = "2018"
 [dependencies]
 aoc2020 = { path = ".." }
 color-eyre = "0.5.8"
+parse-display = "0.4.0"
 structopt = "0.3.20"
 thiserror = "1.0.22"

@@ -1,25 +1,19 @@
-use aoc2020::geometry::{Map, Point};
+use aoc2020::geometry::{tile::DisplayWidth, Map, Point};
 
 use std::convert::{TryFrom, TryInto};
 use std::path::Path;
 use thiserror::Error;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, parse_display::FromStr, parse_display::Display)]
 enum Tile {
+    #[display("#")]
     Tree,
+    #[display(".")]
     Clear,
 }
 
-impl TryFrom<char> for Tile {
-    type Error = String;
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        match value {
-            '#' => Ok(Tile::Tree),
-            '.' => Ok(Tile::Clear),
-            other => Err(format!("invalid tile: {}", other)),
-        }
-    }
+impl DisplayWidth for Tile {
+    const DISPLAY_WIDTH: usize = 1;
 }
 
 struct XWrapMap(Map<Tile>);

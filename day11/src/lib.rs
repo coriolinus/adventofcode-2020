@@ -1,9 +1,11 @@
-use aoc2020::geometry::{Map, Point};
+use aoc2020::geometry::{tile::DisplayWidth, Map, Point};
 
 use std::{convert::TryFrom, path::Path};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, parse_display::Display)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, parse_display::Display, parse_display::FromStr,
+)]
 enum Tile {
     #[display(".")]
     Floor,
@@ -13,17 +15,8 @@ enum Tile {
     OccupiedSeat,
 }
 
-impl TryFrom<char> for Tile {
-    type Error = String;
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        match value {
-            '.' => Ok(Self::Floor),
-            'L' => Ok(Self::EmptySeat),
-            '#' => Ok(Self::OccupiedSeat),
-            other => Err(format!("unexpected tile char: '{}'", other)),
-        }
-    }
+impl DisplayWidth for Tile {
+    const DISPLAY_WIDTH: usize = 1;
 }
 
 type SeatingSystem = Map<Tile>;
