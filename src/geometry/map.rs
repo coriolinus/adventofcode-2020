@@ -115,6 +115,34 @@ impl<T> Map<T> {
         let width = self.width;
         move |idx: usize| (idx % width, idx / width)
     }
+
+    /// Return an iterator of all legal points adjacent to the given point.
+    ///
+    /// This iterator will return up to 8 elements; it includes diagonals.
+    pub fn adjacencies(&self, point: Point) -> impl '_ + Iterator<Item = Point> {
+        self.orthogonal_adjacencies(point).chain(
+            Direction::iter_diag()
+                .map(move |(vertical, horizontal)| point + vertical + horizontal)
+                .filter(move |&point| self.in_bounds(point)),
+        )
+    }
+
+    /// Return an iterator of all legal points orthogonally adjacent to the given point.
+    ///
+    /// This iterator will return up to 4 elements; it does not include diagonals.
+    pub fn orthogonal_adjacencies(&self, point: Point) -> impl '_ + Iterator<Item = Point> {
+        Direction::iter()
+            .map(move |direction| point + direction)
+            .filter(move |&point| self.in_bounds(point))
+    }
+
+    /// Return an iterator of all legal points arrived at by applying the given deltas to the origin.
+    ///
+    /// The origin point is always the first item in this iteration.
+    pub fn project(&self, origin: Point, dx: i32, dy: i32) -> impl '_ + Iterator<Item = Point> {
+        std::iter::successors(Some(origin), move |&current| Some(current + (dx, dy)))
+            .take_while(move |&point| self.in_bounds(point))
+    }
 }
 
 impl<T: Clone + Default> Map<T> {
