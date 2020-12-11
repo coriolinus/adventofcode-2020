@@ -80,33 +80,16 @@ fn state_transition_project(seats: &SeatingSystem) -> SeatingSystem {
 
 fn transition_until_stable(
     seats: &SeatingSystem,
-    successor: impl Fn(&SeatingSystem) -> SeatingSystem,
+    state_transition: impl Fn(&SeatingSystem) -> SeatingSystem,
 ) -> SeatingSystem {
-    use std::{
-        collections::{hash_map::DefaultHasher, HashSet},
-        hash::{Hash, Hasher},
-    };
-
-    // For space-efficiency purposes, we don't actually keep around all the old maps that we're
-    // not using anymore; we store their hashes instead.
-
-    let hash = |seating_system: &SeatingSystem| {
-        let mut hasher = DefaultHasher::new();
-        seating_system.hash(&mut hasher);
-        hasher.finish()
-    };
-
-    let mut visited = HashSet::new();
     let mut current = seats.clone();
 
     loop {
-        let current_hash = hash(&current);
-        if visited.contains(&current_hash) {
+        let succ = state_transition(&current);
+        if succ == current {
             break;
         }
-        visited.insert(current_hash);
-
-        current = successor(&current);
+        current = succ;
     }
 
     current
