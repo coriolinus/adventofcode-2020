@@ -28,23 +28,14 @@ impl TryFrom<char> for Tile {
 
 type SeatingSystem = Map<Tile>;
 
-fn state_transition_adjacent(seats: &SeatingSystem) -> SeatingSystem {
-    let mut output = seats.clone();
-    output.for_each_point_mut(|seat, position| {
-        let n_occupied_adjacencies = seats
-            .adjacencies(position)
-            .filter(|&seat_position| seats[seat_position] == Tile::OccupiedSeat)
-            .count();
-        match (&seat, n_occupied_adjacencies) {
-            (Tile::EmptySeat, 0) => *seat = Tile::OccupiedSeat,
-            (Tile::OccupiedSeat, n) if n >= 4 => *seat = Tile::EmptySeat,
-            _ => {}
-        }
-    });
-    output
+fn count_occupied_adjacencies(seats: &SeatingSystem, position: Point) -> usize {
+    seats
+        .adjacencies(position)
+        .filter(|&seat_position| seats[seat_position] == Tile::OccupiedSeat)
+        .count()
 }
 
-fn count_occupied_adjacencies_project(seats: &SeatingSystem, position: Point) -> usize {
+fn count_occupied_projected(seats: &SeatingSystem, position: Point) -> usize {
     seats
         .adjacencies(position)
         .filter(|&adj| {
@@ -62,17 +53,29 @@ fn count_occupied_adjacencies_project(seats: &SeatingSystem, position: Point) ->
         .count()
 }
 
-fn state_transition_project(seats: &SeatingSystem) -> SeatingSystem {
+fn state_transition(
+    seats: &SeatingSystem,
+    count_occupied: impl Fn(&SeatingSystem, Point) -> usize,
+    max_adjacent: usize,
+) -> SeatingSystem {
     let mut output = seats.clone();
     output.for_each_point_mut(|seat, position| {
-        let n_occupied_adjacencies = count_occupied_adjacencies_project(seats, position);
+        let n_occupied_adjacencies = count_occupied(seats, position);
         match (&seat, n_occupied_adjacencies) {
             (Tile::EmptySeat, 0) => *seat = Tile::OccupiedSeat,
-            (Tile::OccupiedSeat, n) if n >= 5 => *seat = Tile::EmptySeat,
+            (Tile::OccupiedSeat, n) if n >= max_adjacent => *seat = Tile::EmptySeat,
             _ => {}
         }
     });
     output
+}
+
+fn state_transition_adjacent(seats: &SeatingSystem) -> SeatingSystem {
+    state_transition(seats, count_occupied_adjacencies, 4)
+}
+
+fn state_transition_project(seats: &SeatingSystem) -> SeatingSystem {
+    state_transition(seats, count_occupied_projected, 5)
 }
 
 fn transition_until_stable(
@@ -121,7 +124,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     let seats = transition_until_stable(&seats, state_transition_adjacent);
     let occupied_when_stable = count_occupied(&seats);
     println!(
-        "seats occupied in steady state (adjacent): {}",
+        "seats occupied in steady state (adjacent):  {}",
         occupied_when_stable
     );
     Ok(())
