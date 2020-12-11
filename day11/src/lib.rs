@@ -53,44 +53,43 @@ fn count_occupied_projected(seats: &SeatingSystem, position: Point) -> usize {
         .count()
 }
 
-// panics if `seats` and `successor` have unequal bounds
 fn state_transition(
     seats: &SeatingSystem,
-    successor: &mut SeatingSystem,
     count_occupied: impl Fn(&SeatingSystem, Point) -> usize,
     max_adjacent: usize,
-) {
-    successor.for_each_point_mut(|seat, position| {
+) -> SeatingSystem {
+    let mut output = seats.clone();
+    output.for_each_point_mut(|seat, position| {
         let n_occupied_adjacencies = count_occupied(seats, position);
         match (&seat, n_occupied_adjacencies) {
             (Tile::EmptySeat, 0) => *seat = Tile::OccupiedSeat,
             (Tile::OccupiedSeat, n) if n >= max_adjacent => *seat = Tile::EmptySeat,
-            _ => *seat = seats[position],
+            _ => {}
         }
     });
+    output
 }
 
-fn state_transition_adjacent(seats: &SeatingSystem, successor: &mut SeatingSystem) {
-    state_transition(seats, successor, count_occupied_adjacencies, 4)
+fn state_transition_adjacent(seats: &SeatingSystem) -> SeatingSystem {
+    state_transition(seats, count_occupied_adjacencies, 4)
 }
 
-fn state_transition_project(seats: &SeatingSystem, successor: &mut SeatingSystem) {
-    state_transition(seats, successor, count_occupied_projected, 5)
+fn state_transition_project(seats: &SeatingSystem) -> SeatingSystem {
+    state_transition(seats, count_occupied_projected, 5)
 }
 
 fn transition_until_stable(
     seats: &SeatingSystem,
-    state_transition: impl Fn(&SeatingSystem, &mut SeatingSystem),
+    state_transition: impl Fn(&SeatingSystem) -> SeatingSystem,
 ) -> SeatingSystem {
     let mut current = seats.clone();
-    let mut successor = seats.clone();
 
     loop {
-        state_transition(&current, &mut successor);
-        if successor == current {
+        let succ = state_transition(&current);
+        if succ == current {
             break;
         }
-        std::mem::swap(&mut current, &mut successor);
+        current = succ;
     }
 
     current
