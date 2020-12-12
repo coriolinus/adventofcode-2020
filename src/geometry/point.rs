@@ -28,6 +28,46 @@ impl Point {
             y: self.y.abs(),
         }
     }
+
+    /// Rotate this point clockwise around the origin.
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// # use aoc2020::geometry::Point;
+    /// let mut point = Point::new(2, 1);
+    /// point = point.rotate_right();
+    /// assert_eq!(point, Point::new(1, -2));
+    /// point = point.rotate_right();
+    /// assert_eq!(point, Point::new(-2, -1));
+    /// point = point.rotate_right();
+    /// assert_eq!(point, Point::new(-1, 2));
+    /// point = point.rotate_right();
+    /// assert_eq!(point, Point::new(2, 1));
+    /// ```
+    pub fn rotate_right(&self) -> Point {
+        Point::new(self.y, -self.x)
+    }
+
+    /// Rotate this point counterclockwise around the origin.
+    ///
+    /// For example:
+    ///
+    /// ```
+    /// # use aoc2020::geometry::Point;
+    /// let mut point = Point::new(2, 1);
+    /// point = point.rotate_left();
+    /// assert_eq!(point, Point::new(-1, 2));
+    /// point = point.rotate_left();
+    /// assert_eq!(point, Point::new(-2, -1));
+    /// point = point.rotate_left();
+    /// assert_eq!(point, Point::new(1, -2));
+    /// point = point.rotate_left();
+    /// assert_eq!(point, Point::new(2, 1));
+    /// ```
+    pub fn rotate_left(&self) -> Point {
+        Point::new(-self.y, self.x)
+    }
 }
 
 impl From<(usize, usize)> for Point {
