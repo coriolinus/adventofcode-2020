@@ -1,4 +1,4 @@
-use crate::geometry::Direction;
+use crate::geometry::{line_segment::LineSegment, Direction};
 use std::convert::TryFrom;
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 
@@ -70,12 +70,42 @@ impl Add<(i32, i32)> for Point {
         self
     }
 }
+impl AddAssign<Direction> for Point {
+    fn add_assign(&mut self, direction: Direction) {
+        *self += direction.deltas();
+    }
+}
 
 impl Add<Direction> for Point {
     type Output = Point;
 
-    fn add(self, direction: Direction) -> Point {
-        self + direction.deltas()
+    fn add(mut self, direction: Direction) -> Point {
+        self += direction;
+        self
+    }
+}
+
+impl AddAssign<LineSegment> for Point {
+    fn add_assign(
+        &mut self,
+        LineSegment {
+            direction,
+            distance,
+        }: LineSegment,
+    ) {
+        let (mut dx, mut dy) = direction.deltas();
+        dx *= distance;
+        dy *= distance;
+        *self += (dx, dy);
+    }
+}
+
+impl Add<LineSegment> for Point {
+    type Output = Point;
+
+    fn add(mut self, line_segment: LineSegment) -> Point {
+        self += line_segment;
+        self
     }
 }
 

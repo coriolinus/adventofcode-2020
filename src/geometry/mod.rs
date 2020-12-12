@@ -1,9 +1,9 @@
 pub mod direction;
 pub mod line;
+pub mod line_segment;
 pub mod map;
 pub mod point;
 pub mod tile;
-pub mod trace;
 pub mod vector3;
 
 pub use direction::Direction;
