@@ -10,6 +10,7 @@ chrono = "0.4.19"
 color-eyre = "0.5.8"
 dirs = "3.0.1"
 lazy_static = "1.4.0"
+num = "0.3.1"
 path-absolutize = "3.0.6"
 regex = "1.4.2"
 reqwest = { version = "0.10.9", features = [ "blocking", "gzip", "cookies" ] }

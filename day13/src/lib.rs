@@ -1,10 +1,13 @@
-use aoc2020::input::parse_newline_sep;
+use aoc2020::{
+    input::parse_newline_sep,
+    numbers::chinese_remainder::{chinese_remainder, Constraint},
+};
 
-use std::{convert::TryInto, path::Path, str::FromStr};
+use std::{path::Path, str::FromStr};
 use thiserror::Error;
 
-type Bus = u64;
-type Timestamp = u64;
+type Bus = i64;
+type Timestamp = i64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::Display, parse_display::FromStr)]
 enum BusId {
@@ -88,26 +91,18 @@ impl BusNotes {
             .all(|(idx, bus)| minutes_remaining_after(bus, t) as usize == idx)
     }
 
-    fn maximum_bus(&self) -> Option<(Bus, usize)> {
-        self.routes
-            .iter()
-            .copied()
-            .enumerate()
-            .filter_map(|(idx, bus)| match bus {
-                BusId::Number(bus) => Some((bus, idx)),
-                BusId::X => None,
-            })
-            .max()
-    }
-
     fn search_for_valid_timestamp(&self) -> Option<Timestamp> {
-        let (max_bus, max_bus_idx) = self.maximum_bus()?;
-        let max_bus_idx: Timestamp = max_bus_idx.try_into().ok()?;
-        (0..)
-            .map(|t| t * max_bus)
-            .filter(|&t| t >= max_bus_idx)
-            .map(|t| t - max_bus_idx)
-            .find(|&t| self.is_valid_part2(t))
+        let constraints: Vec<_> = self
+            .active_routes()
+            .map(|(position, bus)| Constraint::new_invert_remainder(bus, position as Bus))
+            .collect();
+        let t = chinese_remainder(&constraints)?;
+        let valid = self.is_valid_part2(t);
+        if !valid {
+            dbg!(t);
+        }
+        assert!(valid, "validity calculation failed");
+        Some(t)
     }
 }
 
