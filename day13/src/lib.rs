@@ -1,10 +1,10 @@
 use aoc2020::input::parse_newline_sep;
 
-use std::{path::Path, str::FromStr};
+use std::{convert::TryInto, path::Path, str::FromStr};
 use thiserror::Error;
 
-type Bus = u32;
-type Timestamp = u32;
+type Bus = u64;
+type Timestamp = u64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::Display, parse_display::FromStr)]
 enum BusId {
@@ -45,26 +45,69 @@ impl FromStr for BusNotes {
     }
 }
 
+fn minutes_remaining_after(bus: Bus, t: Timestamp) -> Timestamp {
+    let point_in_route = t % bus;
+    if point_in_route == 0 {
+        0
+    } else {
+        bus - point_in_route
+    }
+}
+
 impl BusNotes {
-    fn active_routes(&self) -> impl '_ + Iterator<Item = Bus> {
-        self.routes.iter().copied().filter_map(|id| match id {
-            BusId::Number(bus) => Some(bus),
-            BusId::X => None,
-        })
+    fn active_routes(&self) -> impl '_ + Iterator<Item = (usize, Bus)> {
+        self.routes
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(idx, bus)| match bus {
+                BusId::Number(bus) => Some((idx, bus)),
+                BusId::X => None,
+            })
     }
 
     fn first_departure_after(&self) -> Option<(Timestamp, Bus)> {
         self.active_routes()
-            .map(|bus| {
-                let point_in_route = self.earliest_departure_timestamp % bus;
-                let minutes_remaining = if point_in_route == 0 {
-                    0
-                } else {
-                    bus - point_in_route
-                };
+            .map(|(_, bus)| {
+                let minutes_remaining =
+                    minutes_remaining_after(bus, self.earliest_departure_timestamp);
                 (minutes_remaining, bus)
             })
             .min()
+    }
+
+    fn is_valid_part2(&self, t: Timestamp) -> bool {
+        self.routes
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(idx, bus)| match bus {
+                BusId::Number(bus) => Some((idx, bus)),
+                BusId::X => None,
+            })
+            .all(|(idx, bus)| minutes_remaining_after(bus, t) as usize == idx)
+    }
+
+    fn maximum_bus(&self) -> Option<(Bus, usize)> {
+        self.routes
+            .iter()
+            .copied()
+            .enumerate()
+            .filter_map(|(idx, bus)| match bus {
+                BusId::Number(bus) => Some((bus, idx)),
+                BusId::X => None,
+            })
+            .max()
+    }
+
+    fn search_for_valid_timestamp(&self) -> Option<Timestamp> {
+        let (max_bus, max_bus_idx) = self.maximum_bus()?;
+        let max_bus_idx: Timestamp = max_bus_idx.try_into().ok()?;
+        (0..)
+            .map(|t| t * max_bus)
+            .filter(|&t| t >= max_bus_idx)
+            .map(|t| t - max_bus_idx)
+            .find(|&t| self.is_valid_part2(t))
     }
 }
 
@@ -80,8 +123,17 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    for (notes_id, notes) in parse_newline_sep::<BusNotes>(input)?.enumerate() {
+        let valid_timestamp = notes
+            .search_for_valid_timestamp()
+            .ok_or(Error::NoSolution)?;
+        println!(
+            "notes {}: first valid timestamp = {}",
+            notes_id, valid_timestamp
+        );
+    }
+    Ok(())
 }
 
 #[derive(Debug, Error)]
