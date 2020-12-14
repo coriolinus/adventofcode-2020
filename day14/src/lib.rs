@@ -3,12 +3,12 @@ use aoc2020::parse;
 use std::{collections::HashMap, fmt, iter::FromIterator, path::Path, str::FromStr};
 use thiserror::Error;
 
-const U36_MASK: u64 = 0x0f_ffff_ffff;
+const U36_MASK: i64 = 0x0f_ffff_ffff;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct Mask {
-    zeroes: u64,
-    ones: u64,
+    zeroes: i64,
+    ones: i64,
 }
 
 impl Default for Mask {
@@ -30,8 +30,46 @@ impl fmt::Debug for Mask {
 }
 
 impl Mask {
-    fn apply(&self, value: u64) -> u64 {
+    fn apply(&self, value: i64) -> i64 {
         value & self.zeroes | self.ones
+    }
+
+    fn floating_bits(&self) -> i64 {
+        !(!self.zeroes | self.ones)
+    }
+
+    /// Compute a sequence of floating masks
+    fn floating_masks(&self) -> impl Iterator<Item = i64> {
+        let floating = self.floating_bits();
+        let n_masks = 2_u64.pow(floating.count_ones());
+        (0..n_masks).map(move |mut n| {
+            // we need to map the rightmost `n_masks` bits of `n` onto `floating`.
+            let mut floating_bits_remaining = floating;
+            let mut output = 0;
+
+            while n > 0 && floating_bits_remaining > 0 {
+                let right_bit = n & 1;
+                n >>= 1;
+
+                // now apply `right_bit` to the position of the rightmost 1 in `floating_bits_remaining`
+                // bit tricks are fun
+                let rightmost_floating_bit = floating_bits_remaining & (-floating_bits_remaining);
+                // unset that bit
+                floating_bits_remaining &= !rightmost_floating_bit;
+                if right_bit > 0 {
+                    output |= rightmost_floating_bit;
+                }
+            }
+
+            output
+        })
+    }
+
+    fn apply_floating(&self, value: i64) -> impl Iterator<Item = i64> {
+        let floating = self.floating_bits();
+        let ones = self.ones;
+        self.floating_masks()
+            .map(move |mask| value & !floating | mask | ones)
     }
 }
 
@@ -64,13 +102,13 @@ enum Instruction {
     #[display("mask = {0}")]
     Mask(Mask),
     #[display("mem[{idx}] = {value}")]
-    Write { idx: usize, value: u64 },
+    Write { idx: usize, value: i64 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct DockingProgram {
     mask: Mask,
-    memory: HashMap<usize, u64>,
+    memory: HashMap<usize, i64>,
 }
 
 impl FromIterator<Instruction> for DockingProgram {
@@ -80,7 +118,7 @@ impl FromIterator<Instruction> for DockingProgram {
             match instruction {
                 Instruction::Mask(mask) => program.mask = mask,
                 Instruction::Write { idx, value } => {
-                    *program.memory.entry(idx).or_default() = program.mask.apply(value);
+                    program.memory.insert(idx, program.mask.apply(value));
                 }
             }
         }
@@ -88,15 +126,70 @@ impl FromIterator<Instruction> for DockingProgram {
     }
 }
 
-pub fn part1(input: &Path) -> Result<(), Error> {
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+struct DockingProgramV2 {
+    mask: Mask,
+    memory: HashMap<i64, i64>,
+}
+
+impl FromIterator<Instruction> for DockingProgramV2 {
+    fn from_iter<T: IntoIterator<Item = Instruction>>(iter: T) -> Self {
+        let mut program = DockingProgramV2::default();
+        for instruction in iter.into_iter() {
+            match instruction {
+                Instruction::Mask(mask) => program.mask = mask,
+                Instruction::Write { idx, value } => {
+                    for idx in program.mask.apply_floating(idx as i64) {
+                        program.memory.insert(idx, value);
+                    }
+                }
+            }
+        }
+        program
+    }
+}
+
+fn print_memory<K, V>(memory: &HashMap<K, V>)
+where
+    K: Copy + Ord + fmt::Display + fmt::Binary + std::hash::Hash,
+    V: Copy + fmt::Display,
+{
+    let mut keys: Vec<_> = memory.keys().copied().collect();
+    keys.sort_unstable();
+    for key in keys {
+        println!(
+            "{key:036b}  (decimal {key}) => {value}",
+            key = key,
+            value = memory
+                .get(&key)
+                .copied()
+                .expect("this key is known to exist")
+        );
+    }
+}
+
+pub fn part1(input: &Path, show_memory: bool) -> Result<(), Error> {
     let program: DockingProgram = parse(input)?.collect();
-    let sum = program.memory.values().sum::<u64>();
+    let sum = program.memory.values().sum::<i64>();
+
+    if show_memory {
+        print_memory(&program.memory)
+    }
+
     println!("sum of memory values: {}", sum,);
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path, show_memory: bool) -> Result<(), Error> {
+    let program: DockingProgramV2 = parse(input)?.collect();
+    let sum = program.memory.values().sum::<i64>();
+
+    if show_memory {
+        print_memory(&program.memory)
+    }
+
+    println!("sum of memory values: {}", sum);
+    Ok(())
 }
 
 #[derive(Debug, Error)]
@@ -107,4 +200,66 @@ pub enum Error {
     WrongMaskLen(usize),
     #[error("unexpected mask char: {0}")]
     UnexpectedMaskChar(char),
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_floating_example_1() {
+        let mask: Mask = dbg!("000000000000000000000000000000X1001X".parse().unwrap());
+        assert_eq!(mask.floating_bits(), 0b100001);
+    }
+
+    #[test]
+    fn test_floating_example_2() {
+        let mask: Mask = dbg!("00000000000000000000000000000000X0XX".parse().unwrap());
+        assert_eq!(mask.floating_bits(), 0b1011);
+    }
+
+    #[test]
+    fn test_floating_mask_1() {
+        let mask: Mask = dbg!("000000000000000000000000000000X1001X".parse().unwrap());
+        println!("mask.floating_bits() = {:036b}", mask.floating_bits());
+        let expect = [0b_0_0000_0, 0b_0_0000_1, 0b_1_0000_0, 0b_1_0000_1];
+        let floating_masks: Vec<_> = mask.floating_masks().collect();
+        assert_eq!(&floating_masks, &expect);
+    }
+
+    #[test]
+    fn test_floating_mask_2() {
+        let mask: Mask = dbg!("00000000000000000000000000000000X0XX".parse().unwrap());
+        println!("mask.floating_bits() = {:036b}", mask.floating_bits());
+        let expect = [
+            0b0000, 0b0001, 0b0010, 0b0011, 0b1000, 0b1001, 0b1010, 0b1011,
+        ];
+        let floating_masks: Vec<_> = mask.floating_masks().collect();
+        assert_eq!(&floating_masks, &expect);
+    }
+
+    #[test]
+    fn test_apply_floating_1() {
+        let mask: Mask = dbg!("000000000000000000000000000000X1001X".parse().unwrap());
+        let value = 42;
+        println!("value =                {:06b}", value);
+        let expect = [0b_0_1101_0, 0b_0_1101_1, 0b_1_1101_0, 0b_1_1101_1];
+        println!("mask.floating_bits() = {:06b}", mask.floating_bits());
+        let floating: Vec<_> = mask.apply_floating(value).collect();
+        for (want, have) in expect.iter().zip(&floating) {
+            println!("want: {:06b}; have: {:06b}", want, have);
+        }
+        assert_eq!(&floating, &expect);
+    }
+
+    #[test]
+    fn test_apply_floating_2() {
+        let mask: Mask = dbg!("00000000000000000000000000000000X0XX".parse().unwrap());
+        let value = 26;
+        let expect = [
+            0b_1_0000, 0b_1_0001, 0b_1_0010, 0b_1_0011, 0b_1_1000, 0b_1_1001, 0b_1_1010, 0b_1_1011,
+        ];
+        let floating: Vec<_> = mask.apply_floating(value).collect();
+        assert_eq!(&floating, &expect);
+    }
 }
