@@ -3,11 +3,11 @@ use aoc2020::{parse, CommaSep};
 use std::path::Path;
 use thiserror::Error;
 
-fn memory_game(initializers: &[u32]) -> impl '_ + Iterator<Item = u32> {
+fn memory_game(initializers: &[u32], preallocate: usize) -> impl '_ + Iterator<Item = u32> {
     let mut turn = 0;
     let mut previous = 0;
-    let mut most_recent = Vec::new();
-    let mut second_most_recent = Vec::new();
+    let mut most_recent = Vec::with_capacity(preallocate);
+    let mut second_most_recent = Vec::with_capacity(preallocate);
 
     std::iter::from_fn(move || {
         let current = if turn < initializers.len() {
@@ -44,7 +44,7 @@ fn memory_game(initializers: &[u32]) -> impl '_ + Iterator<Item = u32> {
 pub fn part1(input: &Path) -> Result<(), Error> {
     const N: usize = 2020;
     let initializers: Vec<u32> = parse::<CommaSep<u32>>(input)?.flatten().collect();
-    let value = memory_game(&initializers)
+    let value = memory_game(&initializers, N / 10)
         .nth(N - 1)
         .expect("game never terminates; qed");
     println!("{}th number spoken: {}", N, value);
@@ -54,7 +54,7 @@ pub fn part1(input: &Path) -> Result<(), Error> {
 pub fn part2(input: &Path) -> Result<(), Error> {
     const N: usize = 30000000;
     let initializers: Vec<u32> = parse::<CommaSep<u32>>(input)?.flatten().collect();
-    let value = memory_game(&initializers)
+    let value = memory_game(&initializers, N / 10)
         .nth(N - 1)
         .expect("game never terminates; qed");
     println!("{}th number spoken: {}", N, value);
