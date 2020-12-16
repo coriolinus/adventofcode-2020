@@ -6,7 +6,7 @@ use std::{convert::TryFrom, path::Path, str::FromStr};
 #[derive(Clone, parse_display::FromStr, parse_display::Display)]
 #[display("{name}: {low_range_low}-{low_range_high} or {high_range_low}-{high_range_high}")]
 pub struct TicketField {
-    name: String,
+    pub(crate) name: String,
     low_range_low: u32,
     low_range_high: u32,
     high_range_low: u32,
