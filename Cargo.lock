@@ -44,6 +44,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "num",
+ "parse-display",
  "path-absolutize",
  "regex",
  "reqwest",

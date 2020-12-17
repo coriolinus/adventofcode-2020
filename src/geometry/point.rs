@@ -1,6 +1,9 @@
 use crate::geometry::{line_segment::LineSegment, Direction};
-use std::convert::TryFrom;
-use std::ops::{Add, AddAssign, Div, Mul, Sub};
+use itertools::Itertools;
+use std::{
+    convert::TryFrom,
+    ops::{Add, AddAssign, Div, Mul, Sub},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Point {
@@ -179,5 +182,93 @@ impl Div<i32> for Point {
             x: self.x / other,
             y: self.y / other,
         }
+    }
+}
+
+pub trait PointTrait: Copy + Eq {
+    /// Numeric type backing this point
+    type N;
+
+    /// Return the manhattan distance of this point from the origin.
+    fn manhattan(self) -> Self::N;
+
+    /// Reduce all components of this point by 1.
+    fn decr(self) -> Self;
+
+    /// Increase all components of this point by 1.
+    fn incr(self) -> Self;
+
+    /// Generate all points inclusively bounded by `min` and `max`.
+    fn inclusive_range(min: Self, max: Self) -> Box<dyn Iterator<Item = Self>>;
+
+    /// Iterate over points adjacent to this point.
+    ///
+    /// This includes diagonals, and excludes the center.
+    ///
+    /// The implementation should always return a constant number of items, even if
+    /// for simplicity it does not implement `ExactSizeIterator`.
+    fn adjacent(self) -> Box<dyn Iterator<Item = Self>>
+    where
+        Self: 'static,
+    {
+        Box::new(
+            Self::inclusive_range(self.decr(), self.incr()).filter(move |&point| point != self),
+        )
+    }
+
+    /// Return the boundary minimum between `self` and `other`.
+    ///
+    /// This is defined as a new point with each component defined by `self.component.min(other.component)`.
+    fn boundary_min(self, other: Self) -> Self;
+
+    /// Return the boundary maximum between `self` and `other`.
+    ///
+    /// This is defined as a new point with each component defined by `self.component.max(other.component)`.
+    fn boundary_max(self, other: Self) -> Self;
+
+    /// Return the volume of the space defined between this point and the origin.
+    fn volume<T>(self) -> T
+    where
+        T: From<Self::N> + Mul<Output = T>;
+}
+
+impl PointTrait for Point {
+    type N = i32;
+
+    fn manhattan(self) -> Self::N {
+        <Self>::manhattan(&self)
+    }
+
+    fn decr(self) -> Self {
+        Point::new(self.x - 1, self.y - 1)
+    }
+
+    fn incr(self) -> Self {
+        Point::new(self.x + 1, self.y + 1)
+    }
+
+    fn inclusive_range(min: Self, max: Self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(
+            (min.y..=max.y)
+                .cartesian_product(min.x..=max.x)
+                .map(|(y, x)| Point::new(x, y)),
+        )
+    }
+
+    fn boundary_min(self, other: Self) -> Self {
+        Point::new(self.x.min(other.x), self.y.min(other.y))
+    }
+
+    fn boundary_max(self, other: Self) -> Self {
+        Point::new(self.x.max(other.x), self.y.max(other.y))
+    }
+
+    fn volume<T>(self) -> T
+    where
+        T: From<Self::N> + Mul<Output = T>,
+    {
+        let x: T = self.x.abs().into();
+        let y: T = self.y.abs().into();
+        x * y
     }
 }
