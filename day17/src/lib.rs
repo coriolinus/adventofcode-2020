@@ -1,28 +1,13 @@
 use aoc2020::geometry::{
     point::{Point, PointTrait},
-    tile::DisplayWidth,
+    tile::Bool,
     vector3::Vector3,
     vector4::Vector4,
     Map,
 };
 
-#[cfg(test)]
-use aoc2020::geometry::tile::Bool;
-
 use std::{collections::HashSet, convert::TryFrom, ops::Sub, path::Path};
 use thiserror::Error;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, parse_display::FromStr, parse_display::Display)]
-enum Cube {
-    #[display("#")]
-    Active,
-    #[display(".")]
-    Inactive,
-}
-
-impl DisplayWidth for Cube {
-    const DISPLAY_WIDTH: usize = 1;
-}
 
 #[derive(Default, Debug, Clone)]
 pub struct ConwaySpace<HighDimensionPoint> {
@@ -41,30 +26,24 @@ where
     fn new<T, Projection>(
         input: T,
         projection: Projection,
-    ) -> Result<ConwaySpace<HighDimensionPoint>, <Map<Cube> as TryFrom<T>>::Error>
+    ) -> Result<ConwaySpace<HighDimensionPoint>, <Map<Bool> as TryFrom<T>>::Error>
     where
-        Map<Cube>: TryFrom<T>,
+        Map<Bool>: TryFrom<T>,
         Projection: Fn(Point) -> HighDimensionPoint,
     {
         let plane = Map::try_from(input)?;
-        let expected_capacity = plane.width() * plane.height();
-        let mut space = ConwaySpace::with_capacity(expected_capacity);
+        let mut space = ConwaySpace::default();
+
         plane.for_each_point(|&cube, point| {
             let point = projection(point);
-            if cube == Cube::Active {
+            if cube.into() {
                 space.active.insert(point);
             }
             space.min = space.min.boundary_min(point);
             space.max = space.max.boundary_max(point);
         });
-        Ok(space)
-    }
 
-    fn with_capacity(capacity: usize) -> ConwaySpace<HighDimensionPoint> {
-        ConwaySpace {
-            active: HashSet::with_capacity(capacity),
-            ..ConwaySpace::default()
-        }
+        Ok(space)
     }
 
     fn get(&self, point: HighDimensionPoint) -> bool {
