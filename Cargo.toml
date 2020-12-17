@@ -9,6 +9,7 @@ bitvec = "0.19.4"
 chrono = "0.4.19"
 color-eyre = "0.5.8"
 dirs = "3.0.1"
+itertools = "0.9.0"
 lazy_static = "1.4.0"
 num = "0.3.1"
 path-absolutize = "3.0.6"
@@ -25,5 +26,5 @@ toml_edit = "0.2.0"
 [workspace]
 members = [
     "day01", "day02", "day03", "day04", "day05", "day06", "day07", "day08", "day09", "day10",
-    "day11", "day12", "day13", "day14", "day15", "day16",
+    "day11", "day12", "day13", "day14", "day15", "day16", "day17",
 ]

@@ -41,6 +41,7 @@ dependencies = [
  "chrono",
  "color-eyre",
  "dirs",
+ "itertools",
  "lazy_static",
  "num",
  "path-absolutize",
@@ -535,6 +536,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "day17"
+version = "0.1.0"
+dependencies = [
+ "aoc2020",
+ "color-eyre",
+ "parse-display",
+ "structopt",
+ "thiserror",
+]
+
+[[package]]
 name = "dirs"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -895,6 +907,15 @@ name = "ipnet"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47be2f14c678be2fdcab04ab1171db51b2762ce6f0a8ee87c8dd4a04ed216135"
+
+[[package]]
+name = "itertools"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
+dependencies = [
+ "either",
+]
 
 [[package]]
 name = "itoa"
