@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use day18::{Operation, Value, Term, Expr};
+use crate::{Operation, Value, Term, Expr};
 
 grammar;
 
@@ -8,18 +8,18 @@ Operation: Operation = {
     "*" => Operation::Mul,
 };
 
-Num: i32 = <s:r"[0-9]+"> => i32::from_str(s).unwrap();
+Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
 
-pub Value: Value = {
+Value: Value = {
     <n:Num> => Value::Literal(n),
-    "(" <e:Expr> ")" => Value::Parenthesized(Box::new(e)),
+    "(" <e:Expr> ")" => Value::Expression(Box::new(e)),
 };
 
 Term: Term = <operation:Operation> <value:Value> => Term { operation, value };
 
 pub Expr: Expr = {
-    <n:Num> => Expr { terms: vec![n.into().into()] },
-    <e:Expr> <t:Term> => {
+    <v:Value> => Expr { terms: vec![v.into()] },
+    <mut e:Expr> <t:Term> => {
         e.terms.push(t);
         e
     },

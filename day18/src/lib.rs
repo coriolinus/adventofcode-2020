@@ -1,13 +1,17 @@
 use aoc2020::parse;
+use lalrpop_util::lalrpop_mod;
 
 use std::{
     ops::{Add, Mul},
     path::Path,
+    str::FromStr,
 };
 use thiserror::Error;
 
+lalrpop_mod!(parser);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Operation {
+pub enum Operation {
     Add,
     Mul,
 }
@@ -32,12 +36,12 @@ impl Default for Operation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
-    Literal(i32),
+    Literal(i64),
     Expression(Box<Expr>),
 }
 
 impl Value {
-    pub fn value(&self) -> i32 {
+    pub fn value(&self) -> i64 {
         match self {
             Value::Literal(n) => *n,
             Value::Expression(e) => e.value(),
@@ -47,7 +51,7 @@ impl Value {
 
 impl<T> From<T> for Value
 where
-    i32: From<T>,
+    i64: From<T>,
 {
     fn from(t: T) -> Self {
         Value::Literal(t.into())
@@ -55,13 +59,13 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Term {
+pub struct Term {
     operation: Operation,
     value: Value,
 }
 
 impl Term {
-    fn apply_to(&self, value: i32) -> i32 {
+    fn apply_to(&self, value: i64) -> i64 {
         self.operation.apply_to(self.value.value(), value)
     }
 }
@@ -80,14 +84,26 @@ pub struct Expr {
     terms: Vec<Term>,
 }
 
+impl FromStr for Expr {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parser::ExprParser::new()
+            .parse(s)
+            .map_err(|e| Error::Parse(Box::new(e.map_token(|t| t.to_string()))))
+    }
+}
+
 impl Expr {
-    pub fn value(&self) -> i32 {
+    pub fn value(&self) -> i64 {
         self.terms.iter().fold(0, |acc, elem| elem.apply_to(acc))
     }
 }
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    unimplemented!()
+    let sum = parse::<Expr>(input)?.map(|expr| expr.value()).sum::<i64>();
+    println!("sum of expressions: {}", sum);
+    Ok(())
 }
 
 pub fn part2(_input: &Path) -> Result<(), Error> {
@@ -98,4 +114,6 @@ pub fn part2(_input: &Path) -> Result<(), Error> {
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("parse error")]
+    Parse(#[source] Box<dyn std::error::Error + Send + Sync>),
 }
