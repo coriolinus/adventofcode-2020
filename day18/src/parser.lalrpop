@@ -1,0 +1,26 @@
+use std::str::FromStr;
+use crate::{Operation, Value, Term, Expr};
+
+grammar;
+
+Operation: Operation = {
+    "+" => Operation::Add,
+    "*" => Operation::Mul,
+};
+
+Num: i64 = <s:r"[0-9]+"> => i64::from_str(s).unwrap();
+
+Value: Value = {
+    <n:Num> => Value::Literal(n),
+    "(" <e:Expr> ")" => Value::Expression(Box::new(e)),
+};
+
+Term: Term = <operation:Operation> <value:Value> => Term { operation, value };
+
+pub Expr: Expr = {
+    <v:Value> => Expr { terms: vec![v.into()] },
+    <mut e:Expr> <t:Term> => {
+        e.terms.push(t);
+        e
+    },
+};
