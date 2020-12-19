@@ -617,8 +617,7 @@ version = "0.1.0"
 dependencies = [
  "aoc2020",
  "color-eyre",
- "lalrpop",
- "lalrpop-util",
+ "lazy_static",
  "regex",
  "structopt",
  "thiserror",

@@ -7,10 +7,7 @@ edition = "2018"
 [dependencies]
 aoc2020 = { path = ".." }
 color-eyre = "0.5.8"
-lalrpop-util = "0.19.1"
+lazy_static = "1.4.0"
 regex = "1.4.2"
 structopt = "0.3.20"
 thiserror = "1.0.22"
-
-[build-dependencies]
-lalrpop = { version= "0.19.1", features = [ "lexer" ] }
