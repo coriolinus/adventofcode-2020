@@ -1,5 +1,3 @@
-use aoc2020::parse;
-
 use lalrpop_util::lalrpop_mod;
 use std::{collections::HashMap, path::Path};
 use thiserror::Error;
@@ -34,8 +32,21 @@ pub struct Input {
     messages: Vec<Message>,
 }
 
+fn parse_path(input: &Path) -> Result<Input, Error> {
+    let data = std::fs::read_to_string(input)?;
+    parser::InputParser::new()
+        .parse(&data)
+        .map_err(|err| Error::Parse(Box::new(err.map_token(|t| t.to_string()))))
+}
+
 pub fn part1(input: &Path) -> Result<(), Error> {
-    unimplemented!()
+    let input = parse_path(input)?;
+    println!(
+        "parsed input: {} rules; {} messages",
+        input.rules.len(),
+        input.messages.len()
+    );
+    Ok(())
 }
 
 pub fn part2(_input: &Path) -> Result<(), Error> {
@@ -46,4 +57,6 @@ pub fn part2(_input: &Path) -> Result<(), Error> {
 pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("parse error")]
+    Parse(#[source] Box<dyn std::error::Error + Send + Sync>),
 }

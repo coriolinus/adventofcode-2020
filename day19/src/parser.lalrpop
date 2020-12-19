@@ -33,7 +33,7 @@ TermAlternates: Vec<RuleTerm> = {
     },
 };
 
-pub Rule: Rule = <ident:Ident> ":" <alternates:TermAlternates> NEWLINE => Rule { ident, alternates };
+Rule: Rule = <ident:Ident> ":" <alternates:TermAlternates> NEWLINE => Rule { ident, alternates };
 
 Rules: HashMap<Ident, Rule> = {
     <rule:Rule> => {
@@ -47,9 +47,9 @@ Rules: HashMap<Ident, Rule> = {
     }
 };
 
-Message: String = <s:r"[a-zA-Z]+"> NEWLINE => s.to_string();
+Message: Message = <s:r"[a-zA-Z]+"> NEWLINE => s.to_string();
 
-Messages: Vec<String> = {
+Messages: Vec<Message> = {
     <msg:Message> => vec![msg],
     <mut msgs:Messages> <msg:Message> => {
         msgs.push(msg);
