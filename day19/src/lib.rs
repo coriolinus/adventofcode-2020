@@ -1,10 +1,17 @@
-use std::path::Path;
+use std::{convert::TryFrom, path::Path};
 use thiserror::Error;
 
 mod ast;
+use ast::Input;
 
 pub fn part1(input: &Path) -> Result<(), Error> {
-    unimplemented!()
+    let input = Input::try_from(input)?;
+    println!(
+        "parse success: {} rules; {} messages",
+        input.rules.len(),
+        input.messages.len()
+    );
+    Ok(())
 }
 
 pub fn part2(_input: &Path) -> Result<(), Error> {
