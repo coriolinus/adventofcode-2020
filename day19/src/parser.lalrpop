@@ -4,8 +4,8 @@ use crate::{Ident, RuleTerm, Rule, Message, Input};
 grammar;
 
 match {
-    r"\n" => NEWLINE,
-    r"[a-zA-Z]",
+    "\n" => NEWLINE,
+    r"[a-zA-Z]", // parse single characters at higher priority than multi-char strings
 } else {
     _
 }
@@ -44,7 +44,7 @@ Rules: HashMap<Ident, Rule> = {
     <mut rules:Rules> <rule:Rule> => {
         rules.insert(rule.ident, rule);
         rules
-    }.
+    }
 };
 
 Message: String = <s:r"[a-zA-Z]+"> NEWLINE => s.to_string();
