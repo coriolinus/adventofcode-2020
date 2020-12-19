@@ -3,6 +3,13 @@ use crate::{Ident, RuleTerm, Rule, Message, Input};
 
 grammar;
 
+match {
+    r"\n" => NEWLINE,
+    r"[a-zA-Z]",
+} else {
+    _
+}
+
 Ident: Ident = <s:r"[0-9]+"> => Ident::from_str(s).unwrap();
 
 NumericTerm: RuleTerm = {
@@ -26,7 +33,7 @@ TermAlternates: Vec<RuleTerm> = {
     },
 };
 
-pub Rule: Rule = <ident:Ident> ":" <alternates:TermAlternates> => Rule { ident, alternates };
+pub Rule: Rule = <ident:Ident> ":" <alternates:TermAlternates> NEWLINE => Rule { ident, alternates };
 
 Rules: HashMap<Ident, Rule> = {
     <rule:Rule> => {
@@ -40,10 +47,7 @@ Rules: HashMap<Ident, Rule> = {
     }.
 };
 
-// strictly speaking, a message could potentially have only a single
-// characer, but in the actual input, it never does, so I'll accept this
-// in order to make the parser work.
-Message: String = <s:r"[a-zA-Z]{2,}"> => s.to_string();
+Message: String = <s:r"[a-zA-Z]+"> NEWLINE => s.to_string();
 
 Messages: Vec<String> = {
     <msg:Message> => vec![msg],
