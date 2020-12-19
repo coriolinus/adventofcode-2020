@@ -1,0 +1,56 @@
+use std::{str::FromStr, collections::HashMap};
+use crate::{Ident, RuleTerm, Rule, Message, Input};
+
+grammar;
+
+Ident: Ident = <s:r"[0-9]+"> => Ident::from_str(s).unwrap();
+
+NumericTerm: RuleTerm = {
+    <i:Ident> => RuleTerm::Subrules(vec![i]),
+    <mut n:NumericTerm> <i:Ident> => {
+        n.as_mut_subrules().unwrap().push(i);
+        n
+    },
+};
+
+RuleTerm: RuleTerm = {
+    <n: NumericTerm> => n,
+    "\"" <c:r"[a-zA-Z]"> "\"" => RuleTerm::Literal(c.chars().next().unwrap()),
+};
+
+TermAlternates: Vec<RuleTerm> = {
+    <t:RuleTerm> => vec![t],
+    <mut ts:TermAlternates> "|" <t:RuleTerm> => {
+        ts.push(t);
+        ts
+    },
+};
+
+pub Rule: Rule = <ident:Ident> ":" <alternates:TermAlternates> => Rule { ident, alternates };
+
+Rules: HashMap<Ident, Rule> = {
+    <rule:Rule> => {
+        let mut rules = HashMap::new();
+        rules.insert(rule.ident, rule);
+        rules
+    },
+    <mut rules:Rules> <rule:Rule> => {
+        rules.insert(rule.ident, rule);
+        rules
+    }.
+};
+
+// strictly speaking, a message could potentially have only a single
+// characer, but in the actual input, it never does, so I'll accept this
+// in order to make the parser work.
+Message: String = <s:r"[a-zA-Z]{2,}"> => s.to_string();
+
+Messages: Vec<String> = {
+    <msg:Message> => vec![msg],
+    <mut msgs:Messages> <msg:Message> => {
+        msgs.push(msg);
+        msgs
+    },
+};
+
+pub Input: Input = <rules:Rules> <messages:Messages> => Input { rules, messages };
