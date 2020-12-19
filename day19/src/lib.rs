@@ -23,6 +23,7 @@ fn matches_rule<'a>(rule: Ident, rules: &HashMap<Ident, Rule>, input: &'a str) -
             }
         }
         RuleTerm::Subrules(subrules) => {
+            let mut non_empty_matching_remaining_input = Vec::new();
             'outer: for subrule in subrules.iter() {
                 let mut remaining_input = input;
                 for term in subrule.iter() {
@@ -33,11 +34,16 @@ fn matches_rule<'a>(rule: Ident, rules: &HashMap<Ident, Rule>, input: &'a str) -
                     remaining_input = remaining;
                 }
                 // if we haven't continued past this point, then all terms in this subrule matched.
-                // it _might_ be safe to just return early in this case--but there might be a need for
-                // recursive backtracking. In case part 1 has the wrong answer, look here first!
-                //
-                // ... it was the right answer. Guess it worked?
-                return (true, remaining_input);
+                if remaining_input.is_empty() {
+                    return (true, remaining_input);
+                }
+                non_empty_matching_remaining_input.push(remaining_input);
+            }
+            if non_empty_matching_remaining_input.len() > 1 {
+                println!("WARN: non_empty_matching_remaining_input has len {}, but we arbitrarily return only the first", non_empty_matching_remaining_input.len());
+            }
+            if !non_empty_matching_remaining_input.is_empty() {
+                return (true, non_empty_matching_remaining_input[0]);
             }
         }
     }
@@ -58,8 +64,25 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    let mut input = Input::try_from(input)?;
+    input.rules.insert(
+        8,
+        Rule {
+            ident: 8,
+            term: RuleTerm::Subrules(vec![vec![42], vec![42, 8]]),
+        },
+    );
+    input.rules.insert(
+        11,
+        Rule {
+            ident: 11,
+            term: RuleTerm::Subrules(vec![vec![42, 31], vec![42, 11, 31]]),
+        },
+    );
+    let n_matches_0 = matches_rule_0(&input).count();
+    println!("number matches rule 0 (modified rules): {}", n_matches_0);
+    Ok(())
 }
 
 #[derive(Debug, Error)]
