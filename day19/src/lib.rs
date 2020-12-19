@@ -4,56 +4,52 @@ use thiserror::Error;
 mod ast;
 use ast::{Ident, Input, Rule, RuleTerm};
 
-/// returns whether this rule matched, and the unconsumed portion of the `input` str
+/// returns a list of portions remaining after successful matches of alternatives.
 ///
-/// When there is no match, the output str is always equal to the input str.
-fn matches_rule<'a>(rule: Ident, rules: &HashMap<Ident, Rule>, input: &'a str) -> (bool, &'a str) {
+/// If no alternative matches, returns an empty list
+///
+/// Success can be defined as "at least one empty string is among the output"
+fn matches_rule<'a>(rule: Ident, rules: &HashMap<Ident, Rule>, input: &'a str) -> Vec<&'a str> {
     if input.is_empty() {
-        return (false, input);
+        return Vec::new();
     }
     let rule = match rules.get(&rule) {
         Some(rule) => rule,
-        None => return (false, input),
+        None => return Vec::new(),
     };
 
     match &rule.term {
         RuleTerm::Literal(ch) => {
             if input.chars().next() == Some(*ch) {
-                return (true, &input[ch.len_utf8()..]);
+                return vec![&input[ch.len_utf8()..]];
             }
         }
         RuleTerm::Subrules(subrules) => {
-            let mut non_empty_matching_remaining_input = Vec::new();
-            'outer: for subrule in subrules.iter() {
-                let mut remaining_input = input;
+            let mut matching_remaining_input = Vec::new();
+            for subrule in subrules.iter() {
+                let mut remaining_input = vec![input];
                 for term in subrule.iter() {
-                    let (matches, remaining) = matches_rule(*term, rules, remaining_input);
-                    if !matches {
-                        continue 'outer;
+                    let mut new_remaining_input = Vec::new();
+                    for input in remaining_input {
+                        new_remaining_input.extend(matches_rule(*term, rules, input));
                     }
-                    remaining_input = remaining;
+                    remaining_input = new_remaining_input;
                 }
-                // if we haven't continued past this point, then all terms in this subrule matched.
-                if remaining_input.is_empty() {
-                    return (true, remaining_input);
-                }
-                non_empty_matching_remaining_input.push(remaining_input);
+                matching_remaining_input.extend(remaining_input);
             }
-            if non_empty_matching_remaining_input.len() > 1 {
-                println!("WARN: non_empty_matching_remaining_input has len {}, but we arbitrarily return only the first", non_empty_matching_remaining_input.len());
-            }
-            if !non_empty_matching_remaining_input.is_empty() {
-                return (true, non_empty_matching_remaining_input[0]);
-            }
+            matching_remaining_input.sort();
+            matching_remaining_input.dedup();
+            return matching_remaining_input;
         }
     }
-    (false, input)
+    Vec::new()
 }
 
 fn matches_rule_0(input: &Input) -> impl '_ + Iterator<Item = &String> {
     input.messages.iter().filter(move |msg| {
-        let (matches, remainder) = matches_rule(0, &input.rules, msg);
-        matches && remainder.is_empty()
+        matches_rule(0, &input.rules, msg)
+            .iter()
+            .any(|remainder| remainder.is_empty())
     })
 }
 
