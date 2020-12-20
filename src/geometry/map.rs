@@ -92,6 +92,11 @@ impl<T> Map<T> {
             .for_each(|(idx, tile)| update(tile, index2point(idx).into()));
     }
 
+    pub fn points(&self) -> impl Iterator<Item = Point> {
+        let index2point = self.make_index2point();
+        (0..self.tiles.len()).map(move |idx| index2point(idx).into())
+    }
+
     pub fn in_bounds(&self, point: Point) -> bool {
         point.x >= 0
             && point.y >= 0
@@ -143,6 +148,32 @@ impl<T> Map<T> {
     pub fn project(&self, origin: Point, dx: i32, dy: i32) -> impl '_ + Iterator<Item = Point> {
         std::iter::successors(Some(origin), move |&current| Some(current + (dx, dy)))
             .take_while(move |&point| self.in_bounds(point))
+    }
+
+    /// Create an iterator over the points on the edge of this map.
+    ///
+    /// Note that this iterator returns the points which are coordinates for each point on the edge,
+    /// not the items of this map. You can use the [`Iterator::map`] combinator to map it to items from
+    /// the map, if desired.
+    ///
+    /// The edge is traversed in increasing order. It is a [`std::iter::DoubleEndedIterator`], though, so
+    /// it can be reversed if desired.
+    ///
+    /// The input `direction` indicates which edge should be traversed.
+    pub fn edge(&self, direction: Direction) -> Edge {
+        let (from, to, direction) = match direction {
+            Direction::Left => (self.bottom_left(), self.top_left(), Direction::Up),
+            Direction::Right => (self.bottom_right(), self.top_right(), Direction::Up),
+            Direction::Down => (self.bottom_left(), self.bottom_right(), Direction::Right),
+            Direction::Up => (self.top_left(), self.top_right(), Direction::Right),
+        };
+
+        Edge {
+            from,
+            to,
+            direction,
+            done: false,
+        }
     }
 }
 
@@ -613,5 +644,52 @@ impl Ord for AStarNode {
 impl PartialOrd for AStarNode {
     fn partial_cmp(&self, other: &AStarNode) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+/// Iterator over points on the edge of a [`Map`].
+///
+/// Created by the [`Map::edge`] function. See there for more details.
+pub struct Edge {
+    from: Point,
+    to: Point,
+    direction: Direction,
+    done: bool,
+}
+
+impl Iterator for Edge {
+    type Item = Point;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        let next = self.from;
+        self.from += self.direction;
+        self.done = next == self.to;
+
+        Some(next)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = (self.to - self.from).manhattan() as usize + 1;
+        (size, Some(size))
+    }
+}
+
+impl std::iter::ExactSizeIterator for Edge {}
+
+impl std::iter::DoubleEndedIterator for Edge {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        let next = self.to;
+        self.to += self.direction.reverse();
+        self.done = next == self.from;
+
+        Some(next)
     }
 }
