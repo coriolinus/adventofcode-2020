@@ -185,6 +185,60 @@ impl<T: Clone + Default> Map<T> {
             height,
         }
     }
+
+    /// Create a copy of this map which has been flipped vertically: the axis of symmetry is horizontal.
+    pub fn flip_vertical(&self) -> Map<T> {
+        let mut flipped = Map::new(self.width, self.height);
+
+        for y in 0..self.height {
+            let flipped_y = self.height - y - 1;
+            for x in 0..self.width {
+                flipped[(x, flipped_y)] = self[(x, y)].clone();
+            }
+        }
+
+        flipped
+    }
+
+    /// Create a copy of this map which has been flipped horizontally; the axis of symmetry is vertical.
+    pub fn flip_horizontal(&self) -> Map<T> {
+        let mut flipped = Map::new(self.width, self.height);
+
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let flipped_x = self.width - x - 1;
+                flipped[(flipped_x, y)] = self[(x, y)].clone();
+            }
+        }
+
+        flipped
+    }
+
+    /// Create a copy of this map which has been rotated counter-clockwise.
+    pub fn rotate_left(&self) -> Map<T> {
+        let mut rotated = Map::new(self.height, self.width);
+
+        let rotated_origin = self.bottom_right();
+        for point in self.points() {
+            let rotated_point = point.rotate_left() + rotated_origin;
+            rotated[rotated_point] = self[point].clone();
+        }
+
+        rotated
+    }
+
+    /// Create a copy of this map which has been rotated clockwise.
+    pub fn rotate_right(&self) -> Map<T> {
+        let mut rotated = Map::new(self.height, self.width);
+
+        let rotated_origin = self.top_left();
+        for point in self.points() {
+            let rotated_point = point.rotate_right() + rotated_origin;
+            rotated[rotated_point] = self[point].clone();
+        }
+
+        rotated
+    }
 }
 
 impl<T: std::hash::Hash> std::hash::Hash for Map<T> {

@@ -2,8 +2,8 @@ use aoc2020::{config::Config, website::get_input};
 use day20::{part1, part2};
 
 use color_eyre::eyre::Result;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const DAY: u8 = 20;
 
@@ -42,11 +42,16 @@ fn main() -> Result<()> {
     let args = RunArgs::from_args();
     let input_path = args.input()?;
 
+    let mut tiles_map = None;
+
     if !args.no_part1 {
-        part1(&input_path)?;
+        tiles_map = Some(part1(&input_path)?);
     }
     if args.part2 {
-        part2(&input_path)?;
+        if tiles_map.is_none() {
+            tiles_map = Some(day20::tiles_map_from_input(&input_path)?);
+        }
+        part2(tiles_map.expect("it can't be none here; qed"))?;
     }
     Ok(())
 }

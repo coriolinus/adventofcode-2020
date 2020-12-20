@@ -26,7 +26,7 @@ use thiserror::Error;
 struct TileId(u16);
 
 #[derive(Clone, Default)]
-struct Tile {
+pub struct Tile {
     id: u16,
     data: Map<Bool>,
 }
@@ -49,6 +49,18 @@ impl FromStr for Tile {
             id: tile_id.parse::<TileId>()?.0,
             data: (&tile_data[1..]).try_into()?,
         })
+    }
+}
+
+impl Tile {
+    fn flip_vertical(&mut self) {
+        self.data = self.data.flip_vertical();
+    }
+
+    fn rotate_left(&mut self, times: u8) {
+        for _ in 0..times {
+            self.data = self.data.rotate_left();
+        }
     }
 }
 
@@ -79,6 +91,10 @@ struct TileRepr {
     ///   they properly match the equivalent left and bottom edges when checking for
     ///   equality.
     edges: [u16; 4],
+
+    // keep track of the orientation of this tile, for use in reconstructing the original
+    flipped: bool,
+    left_rotations: u8,
 }
 
 impl From<&Tile> for TileRepr {
@@ -156,23 +172,8 @@ impl TileRepr {
 
     fn rotate_left(mut self, times: usize) -> Self {
         self.edges.rotate_left(times);
-        self
-    }
-
-    fn rotate_right(mut self, times: usize) -> Self {
-        self.edges.rotate_right(times);
-        self
-    }
-
-    fn flip_horizontal(mut self, edge_width: usize) -> Self {
-        // all edges are reversed when flipping: the ones oriented
-        // along the flip direction because they are being explicitly
-        // flipped, and the ones oriented against the flip direction
-        // because opposite sides have opposite expected orientations.
-        for edge in self.edges.iter_mut() {
-            *edge = reverse_edge(*edge, edge_width);
-        }
-        self.edges.swap(1, 3);
+        self.left_rotations += times as u8;
+        self.left_rotations %= self.edges.len() as u8;
         self
     }
 
@@ -185,6 +186,7 @@ impl TileRepr {
             *edge = reverse_edge(*edge, edge_width);
         }
         self.edges.swap(0, 2);
+        self.flipped = !self.flipped;
         self
     }
 
@@ -255,8 +257,8 @@ fn insert_tile(
     false
 }
 
-fn arrange_tiles(tiles: impl IntoIterator<Item = Tile>) -> Result<Map<TileRepr>, Error> {
-    let tiles: HashMap<_, _> = tiles.into_iter().map(|tile| (tile.id, tile)).collect();
+fn arrange_tiles(tiles: impl IntoIterator<Item = Tile>) -> Result<Map<Tile>, Error> {
+    let mut tiles: HashMap<_, _> = tiles.into_iter().map(|tile| (tile.id, tile)).collect();
 
     // compute edge width and validate that all tiles conform to it.
     let mut edge_width = None;
@@ -292,17 +294,118 @@ fn arrange_tiles(tiles: impl IntoIterator<Item = Tile>) -> Result<Map<TileRepr>,
 
     if insert_tile(&mut repr_map, &points, &reprs, &mut used_tiles, edge_width) {
         // convert repr_map into a new, better map
-        let mut output_map: Map<TileRepr> = Map::new(output_edge, output_edge);
+        let mut output_map: Map<Tile> = Map::new(output_edge, output_edge);
         for point in repr_map.points() {
-            output_map[point] = repr_map[point].expect("all points in repr_map are filled");
+            let repr = repr_map[point].expect("all points in repr_map are filled");
+            let mut tile = tiles
+                .remove(&repr.id)
+                .expect("all repr ids correspond to a tile id");
+            if repr.flipped {
+                tile.flip_vertical();
+            }
+            tile.rotate_left(repr.left_rotations);
+
+            output_map[point] = tile;
         }
+
+        debug_assert!(tiles.is_empty(), "must have used every tile");
+
         Ok(output_map)
     } else {
         Err(Error::NoSolution)
     }
 }
 
-pub fn part1(input: &Path) -> Result<(), Error> {
+pub fn tiles_map_from_input(input: &Path) -> Result<Map<Tile>, Error> {
+    let tiles_map = arrange_tiles(parse_newline_sep(input)?)?;
+    Ok(tiles_map)
+}
+
+fn convert_to_image(tiles: Map<Tile>) -> Map<Bool> {
+    if tiles.width() == 0 || tiles.height() == 0 {
+        return Map::new(tiles.width(), tiles.height());
+    }
+    let tile_width = tiles[(0, 0)].data.width() - 2;
+    let mut image = Map::new(tiles.width() * tile_width, tiles.height() * tile_width);
+
+    for tile_point in tiles.points() {
+        for y in 0..tile_width {
+            let image_y = (tile_point.y as usize * tile_width) + y;
+            for x in 0..tile_width {
+                let image_x = (tile_point.x as usize * tile_width) + x;
+                image[(image_x, image_y)] = tiles[tile_point].data[(x + 1, y + 1)];
+            }
+        }
+    }
+
+    image
+}
+
+// Fig. 1: The Wild Sea Monster
+//
+//                   #
+// #    ##    ##    ###
+//  #  #  #  #  #  #
+
+const SEA_MONSTER_WIDTH: usize = 20;
+const SEA_MONSTER_HEIGHT: usize = 3;
+const SEA_MONSTER: &[Point] = &[
+    Point::new(0, 1),
+    Point::new(1, 0),
+    Point::new(4, 0),
+    Point::new(5, 1),
+    Point::new(6, 1),
+    Point::new(7, 0),
+    Point::new(10, 0),
+    Point::new(11, 1),
+    Point::new(12, 1),
+    Point::new(13, 1),
+    Point::new(16, 0),
+    Point::new(17, 1),
+    Point::new(18, 1),
+    Point::new(19, 1),
+    Point::new(18, 2),
+];
+
+// Note: while it doesn't make sense to me that there could be sea monsters
+// which overlap each other, it's in principle possible. If the answer is too low,
+// consider a more robust monster-marking solution.
+fn count_sea_monsters_in(image: &Map<Bool>) -> usize {
+    let mut count = 0;
+    for y in 0..=image.height() - SEA_MONSTER_HEIGHT {
+        for x in 0..=image.width() - SEA_MONSTER_WIDTH {
+            if SEA_MONSTER
+                .iter()
+                .all(|point| image[(x + point.x as usize, y + point.y as usize)].into())
+            {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+fn all_orientations(image: &Map<Bool>) -> impl Iterator<Item = Map<Bool>> {
+    let image = image.clone();
+    let flipped = image.flip_vertical();
+    (0..4)
+        .map(move |n| {
+            let mut image = image.clone();
+            for _ in 0..n {
+                image = image.rotate_left();
+            }
+            image
+        })
+        .chain((0..4).map(move |n| {
+            let mut image = flipped.clone();
+            for _ in 0..n {
+                image = image.rotate_left();
+            }
+            image
+        }))
+}
+
+pub fn part1(input: &Path) -> Result<Map<Tile>, Error> {
     let tiles_map = arrange_tiles(parse_newline_sep(input)?)?;
     let product: u64 = [
         tiles_map.top_left(),
@@ -313,12 +416,22 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     .iter()
     .map(|point| tiles_map[*point].id as u64)
     .product();
+
     println!("product of ids of corners: {}", product);
-    Ok(())
+    Ok(tiles_map)
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(tiles_map: Map<Tile>) -> Result<(), Error> {
+    let image = convert_to_image(tiles_map);
+
+    let sea_monsters: usize = all_orientations(&image)
+        .map(|image| count_sea_monsters_in(&image))
+        .sum();
+    let total_hashes: usize = image.iter().filter(|&elem| (*elem).into()).count();
+    let chop = total_hashes - (sea_monsters * SEA_MONSTER.len());
+
+    println!("{} tiles of chop", chop);
+    Ok(())
 }
 
 #[derive(Debug, Error)]
