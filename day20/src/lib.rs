@@ -199,11 +199,60 @@ impl TileRepr {
 /// recursively try inserting tiles at the next available point in the map
 fn insert_tile(
     map: &mut Map<Option<TileRepr>>,
-    mut points: impl Iterator<Item = Point>,
+    points: &[Point],
     available_tiles: &[TileRepr],
     used_tiles: &mut HashSet<u16>,
+    edge_width: usize,
 ) -> bool {
-    unimplemented!()
+    // if there is no more space to fill, then we must have succeeded
+    if points.is_empty() {
+        return true;
+    }
+
+    // otherwise, prepare for recursion
+    let point = points[0];
+    let points = &points[1..];
+
+    'tile: for &tile in available_tiles {
+        // can't re-use a tile
+        if used_tiles.contains(&tile.id) {
+            continue;
+        }
+
+        // it's a fresh tile, so plug it in and check validity
+        map[point] = Some(tile);
+
+        for direction in Direction::iter() {
+            let adjacent = point + direction;
+            // out of bounds tiles don't matter
+            if !map.in_bounds(adjacent) {
+                continue;
+            }
+
+            // if any adjacent tile is set but doesn't match this tile, then this tile is a dud;
+            // continue with the next available tile
+            if let Some(adjacent) = map[adjacent] {
+                if tile.side(direction, edge_width)
+                    != adjacent.side(direction.reverse(), edge_width)
+                {
+                    continue 'tile;
+                }
+            }
+        }
+
+        // at this point, there are no conflicts to putting this tile here. Recurse!
+        used_tiles.insert(tile.id);
+        if insert_tile(map, points, available_tiles, used_tiles, edge_width) {
+            // we've found a complete solution! Don't mess with anything.
+            return true;
+        } else {
+            // we ran into a dead end, so it's time to try the next tile. Before we do, clean up.
+            used_tiles.remove(&tile.id);
+        }
+    }
+
+    map[point] = None;
+    false
 }
 
 fn arrange_tiles(tiles: impl IntoIterator<Item = Tile>) -> Result<Map<TileRepr>, Error> {
@@ -239,10 +288,15 @@ fn arrange_tiles(tiles: impl IntoIterator<Item = Tile>) -> Result<Map<TileRepr>,
     let output_edge = (tiles.len() as f64).sqrt() as usize;
     let mut repr_map: Map<Option<TileRepr>> = Map::new(output_edge, output_edge);
     let mut used_tiles = HashSet::new();
+    let points: Vec<_> = repr_map.points().collect();
 
-    if insert_tile(&mut repr_map, repr_map.points(), &reprs, &mut used_tiles) {
+    if insert_tile(&mut repr_map, &points, &reprs, &mut used_tiles, edge_width) {
         // convert repr_map into a new, better map
-        unimplemented!()
+        let mut output_map: Map<TileRepr> = Map::new(output_edge, output_edge);
+        for point in repr_map.points() {
+            output_map[point] = repr_map[point].expect("all points in repr_map are filled");
+        }
+        Ok(output_map)
     } else {
         Err(Error::NoSolution)
     }
