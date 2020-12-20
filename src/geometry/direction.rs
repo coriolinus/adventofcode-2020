@@ -21,20 +21,30 @@ impl Direction {
     pub fn turn_right(self) -> Direction {
         use Direction::*;
         match self {
-            Up => Self::Right,
-            Right => Self::Down,
-            Down => Self::Left,
-            Left => Self::Up,
+            Up => Right,
+            Right => Down,
+            Down => Left,
+            Left => Up,
         }
     }
 
     pub fn turn_left(self) -> Direction {
         use Direction::*;
         match self {
-            Up => Self::Left,
-            Left => Self::Down,
-            Down => Self::Right,
-            Right => Self::Up,
+            Up => Left,
+            Left => Down,
+            Down => Right,
+            Right => Up,
+        }
+    }
+
+    pub fn reverse(self) -> Direction {
+        use Direction::*;
+        match self {
+            Up => Down,
+            Left => Right,
+            Down => Up,
+            Right => Left,
         }
     }
 
@@ -52,5 +62,11 @@ impl Direction {
         [(Up, Left), (Up, Right), (Down, Left), (Down, Right)]
             .iter()
             .copied()
+    }
+}
+
+impl Default for Direction {
+    fn default() -> Self {
+        Direction::Up
     }
 }
