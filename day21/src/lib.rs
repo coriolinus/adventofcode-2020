@@ -43,6 +43,8 @@ impl FromStr for Food {
 /// - create the combined set of all known allergens
 /// - for each known allergen:
 ///   - note all ingredients which appear every time the allergen appears
+///
+/// Creates a map of `allergen => [ingredient]`
 fn plausible_allergens(foods: &[Food]) -> HashMap<String, HashSet<String>> {
     let allergens =
         foods
@@ -94,6 +96,57 @@ fn implausible_allergens<'a>(
         .cloned()
 }
 
+// `ingredient => allergen`
+fn identify_allergens(foods: &[Food]) -> HashMap<String, String> {
+    let mut plausible = plausible_allergens(foods);
+
+    // remove inert ingredients from the list of plausible ingredients for each allergen
+    let inerts: HashSet<_> = implausible_allergens(foods, &plausible).collect();
+    for plausible_set in plausible.values_mut() {
+        *plausible_set = plausible_set.difference(&inerts).cloned().collect();
+    }
+
+    let mut allergens = HashMap::new();
+    let mut newly_known_ingredients = HashSet::new();
+
+    while !plausible.is_empty() {
+        for (allergen, possible_ingredients) in plausible.iter_mut() {
+            if possible_ingredients.len() == 1 {
+                let ingredient = possible_ingredients.drain().next().unwrap();
+                newly_known_ingredients.insert(ingredient.clone());
+                allergens.insert(ingredient, allergen.clone());
+            }
+        }
+        for plausible_set in plausible.values_mut() {
+            *plausible_set = plausible_set
+                .difference(&newly_known_ingredients)
+                .cloned()
+                .collect();
+        }
+
+        debug_assert!(newly_known_ingredients.len() > 0);
+        newly_known_ingredients.clear();
+
+        plausible.retain(|_allergen, possible_ingredients| possible_ingredients.len() > 0);
+    }
+
+    allergens
+}
+
+fn canonical_dangerous_ingredient_list(foods: &[Food]) -> String {
+    let allergens = identify_allergens(foods);
+    let mut allergens: Vec<_> = allergens
+        .into_iter()
+        .map(|(ingredient, allergen)| (allergen, ingredient))
+        .collect();
+    allergens.sort();
+    let allergens: Vec<_> = allergens
+        .into_iter()
+        .map(|(_allergen, ingredient)| ingredient)
+        .collect();
+    allergens.join(",")
+}
+
 pub fn part1(input: &Path) -> Result<(), Error> {
     let foods: Vec<Food> = parse(input)?.collect();
     let plausible = plausible_allergens(&foods);
@@ -102,8 +155,14 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    let foods: Vec<Food> = parse(input)?.collect();
+    let canonical_dangerous_ingredients = canonical_dangerous_ingredient_list(&foods);
+    println!(
+        "canonical dangerous ingredient list: {}",
+        canonical_dangerous_ingredients
+    );
+    Ok(())
 }
 
 #[derive(Debug, Error)]
