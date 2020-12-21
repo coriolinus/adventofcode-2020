@@ -86,9 +86,9 @@ fn implausible_allergens<'a>(
     foods
         .iter()
         .map(move |food| {
-            food.ingredients
-                .iter()
-                .filter(move |&ingredient| !plausible.contains_key(ingredient))
+            food.ingredients.iter().filter(move |&ingredient| {
+                !plausible.values().any(|values| values.contains(ingredient))
+            })
         })
         .flatten()
         .cloned()
@@ -112,4 +112,48 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("input did not match parsing regex")]
     ParseError,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EXAMPLE: &str = "
+    mxmxvkd kfcds sqjhc nhms (contains dairy, fish)
+    trh fvjkl sbzzf mxmxvkd (contains dairy)
+    sqjhc fvjkl (contains soy)
+    sqjhc mxmxvkd sbzzf (contains fish)
+    ";
+
+    fn example() -> Vec<Food> {
+        EXAMPLE
+            .trim()
+            .lines()
+            .map(|line| line.parse().expect("food is properly defined"))
+            .collect()
+    }
+
+    #[test]
+    fn test_example() {
+        let foods = example();
+        let plausible = dbg!(plausible_allergens(&foods));
+        let mut implausible_ingredients: Vec<_> =
+            implausible_allergens(&foods, &plausible).collect();
+
+        dbg!(&implausible_ingredients);
+
+        assert_eq!(implausible_ingredients.len(), 5);
+        implausible_ingredients.sort();
+        implausible_ingredients.dedup();
+
+        assert_eq!(
+            implausible_ingredients,
+            vec![
+                "kfcds".to_string(),
+                "nhms".to_string(),
+                "sbzzf".to_string(),
+                "trh".to_string(),
+            ],
+        );
+    }
 }
