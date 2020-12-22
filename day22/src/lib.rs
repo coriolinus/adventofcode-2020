@@ -120,14 +120,6 @@ fn play_recursive(
         println!("=== Game {} ===", game);
     }
 
-    if !memory.insert((player1.cards.clone(), player2.cards.clone())) {
-        // insert returns `false` when the set already contains the item
-        if trace {
-            println!("game state already reached; player {} wins", player1.id);
-        }
-        return player1.id;
-    }
-
     let mut round = 0;
 
     while !(player1.cards.is_empty() || player2.cards.is_empty()) {
@@ -136,6 +128,14 @@ fn play_recursive(
             println!("-- Round {} (Game {}) --", round, game);
             println!("player {}'s deck: {:?}", player1.id, player1.cards);
             println!("player {}'s deck: {:?}", player2.id, player2.cards);
+        }
+
+        if !memory.insert((player1.cards.clone(), player2.cards.clone())) {
+            // insert returns `false` when the set already contains the item
+            if trace {
+                println!("game state already reached; player {} wins", player1.id);
+            }
+            return player1.id;
         }
 
         let card1 = match player1.cards.pop_front() {
