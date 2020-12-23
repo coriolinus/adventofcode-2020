@@ -2,8 +2,8 @@ use aoc2020::{config::Config, website::get_input};
 use day23::{part1, part2};
 
 use color_eyre::eyre::Result;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 const DAY: u8 = 23;
 
@@ -20,6 +20,10 @@ struct RunArgs {
     /// run part 2
     #[structopt(long)]
     part2: bool,
+
+    /// emit tracing output
+    #[structopt(long)]
+    trace: bool,
 }
 
 impl RunArgs {
@@ -43,10 +47,10 @@ fn main() -> Result<()> {
     let input_path = args.input()?;
 
     if !args.no_part1 {
-        part1(&input_path)?;
+        part1(&input_path, args.trace)?;
     }
     if args.part2 {
-        part2(&input_path)?;
+        part2(&input_path, args.trace)?;
     }
     Ok(())
 }

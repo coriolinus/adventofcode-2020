@@ -1,102 +1,135 @@
 use aoc2020::parse;
 
-use std::{collections::VecDeque, fmt, path::Path, str::FromStr};
+use std::{collections::HashMap, fmt, path::Path, str::FromStr};
 use thiserror::Error;
 
 #[derive(Clone, Default)]
 struct CupGame {
-    cups: VecDeque<u32>,
+    successors: HashMap<u32, u32>,
     max: u32,
+    current: u32,
 }
 
 impl FromStr for CupGame {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut first = None;
+        let mut predecessor = 0;
+        let mut n = 0;
         let mut game = CupGame::default();
+
         for ch in s.chars() {
-            game.cups.push_back(ch.to_string().parse()?);
+            n = ch.to_string().parse()?;
+            if first.is_none() {
+                first = Some(n);
+            }
+            game.successors.insert(predecessor, n);
+            predecessor = n;
         }
-        if game.cups.len() < 5 {
+        game.successors.remove(&0);
+
+        if game.successors.len() < 5 {
             return Err(Error::TooFewCups);
         }
-        game.max = game.cups.iter().copied().max().unwrap_or_default();
+
+        // we know that these must have been set, so just unwrap
+        game.successors.insert(n, first.unwrap());
+        game.max = game.successors.keys().copied().max().unwrap();
+        game.current = first.unwrap();
+
         Ok(game)
     }
 }
 
 impl CupGame {
-    fn turn(&mut self) {
-        let current = self.cups[0];
-        self.cups.rotate_left(1);
-        let mut picked_up: Vec<_> = self.cups.drain(..3).collect();
+    fn turn(&mut self, trace: bool) {
+        let mut stash = [0; 3];
+        stash[0] = self.successors[&self.current];
+        stash[1] = self.successors[&stash[0]];
+        stash[2] = self.successors[&stash[1]];
+        let subsequent = self.successors[&stash[2]];
 
-        let mut destination = current - 1;
-        if destination == 0 {
-            destination = self.max;
+        if trace {
+            print!("cups: ({}) ", self.current);
+            let mut next = self.successors[&self.current];
+            while next != self.current {
+                print!("{} ", next);
+                next = self.successors[&next];
+            }
+            println!();
+
+            println!("pick up: {:?}", stash);
         }
-        while picked_up.contains(&destination) {
-            destination -= 1;
+
+        // excise the cup stash from the cycle
+        self.successors.insert(self.current, subsequent);
+
+        // pick destination
+        let mut destination = self.current - 1;
+        let mut validated_destination = false;
+        while !validated_destination {
             if destination == 0 {
                 destination = self.max;
             }
+            if stash.contains(&destination) {
+                destination -= 1;
+            } else {
+                validated_destination = true;
+            }
         }
 
-        while self.cups[0] != destination {
-            self.cups.rotate_left(1);
+        if trace {
+            println!("destination: {}", destination);
         }
-        self.cups.rotate_left(1);
-        // destination is at the end
 
-        self.cups.extend(picked_up.drain(..));
+        // place stash after destination
+        let after_destination = self.successors[&destination];
+        self.successors.insert(stash[2], after_destination);
+        self.successors.insert(destination, stash[0]);
 
-        while self.cups[0] != current {
-            self.cups.rotate_left(1);
-        }
-        self.cups.rotate_left(1);
+        // update current
+        self.current = self.successors[&self.current];
     }
 
     fn extend_to(&mut self, n: u32) {
-        self.cups.extend((self.max + 1)..=n);
-        self.max = n;
-    }
-
-    fn rotate_to_1(&mut self) {
-        while self.cups[0] != 1 {
-            self.cups.rotate_left(1);
-        }
+        unimplemented!()
     }
 }
 
 impl fmt::Display for CupGame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut game: CupGame = self.clone();
-        game.rotate_to_1();
-        for n in game.cups.iter().skip(1) {
-            write!(f, "{}", n)?;
+        let mut next = self.successors[&1];
+        while next != 1 {
+            write!(f, "{}", next)?;
+            next = self.successors[&next];
         }
         Ok(())
     }
 }
 
-pub fn part1(input: &Path) -> Result<(), Error> {
+pub fn part1(input: &Path, trace: bool) -> Result<(), Error> {
     for (idx, mut game) in parse::<CupGame>(input)?.enumerate() {
-        for _ in 0..100 {
-            game.turn();
+        for i in 0..100 {
+            if trace {
+                println!("\n-- move {} --", i + 1);
+            }
+            game.turn(trace);
         }
         println!("input line {}: state after 100 moves: {}", idx, game);
     }
     Ok(())
 }
 
-pub fn part2(input: &Path) -> Result<(), Error> {
+pub fn part2(input: &Path, trace: bool) -> Result<(), Error> {
     for (idx, mut game) in parse::<CupGame>(input)?.enumerate() {
         game.extend_to(1_000_000);
         for _ in 0..10_000_000 {
-            game.turn();
+            game.turn(trace);
         }
-        game.rotate_to_1();
-        let product = game.cups[1] as u64 * game.cups[2] as u64;
+        let first_successor = game.successors[&1];
+        let second_successor = game.successors[&first_successor];
+        let product = first_successor as u64 * second_successor as u64;
         println!(
             "input line {}: product of first 2 after 1 after ten million moves: {}",
             idx, product
