@@ -108,6 +108,7 @@ impl CupGame {
             prev = i;
         }
         self.successors[n] = self.current;
+        self.max = n;
     }
 }
 
@@ -165,6 +166,7 @@ pub enum Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_extend() {
@@ -178,6 +180,7 @@ mod tests {
         let mut game = CupGame::from_str("389125467").unwrap();
         game.extend_to(1_000_000);
 
+        // test 1: it takes 1 million steps to cycle through the list
         let mut count = 1;
         let mut next = game.successors[1];
         while next != 1 {
@@ -186,6 +189,16 @@ mod tests {
         }
 
         assert_eq!(count, 1_000_000);
+
+        // test 2: there are a million distinct entries in the list
+        let mut set: HashSet<usize> = HashSet::with_capacity(game.successors.len());
+        set.extend(game.successors.iter().skip(1));
+        assert_eq!(set.len(), 1_000_000);
+
+        // test 3: every number from 1 to a million is in the set
+        for n in 1..=1_000_000 {
+            assert!(set.contains(&n));
+        }
     }
 
     #[test]
@@ -195,5 +208,19 @@ mod tests {
             game.turn(true);
         }
         assert_eq!(game.to_string(), "67384529");
+    }
+
+    #[test]
+    fn test_part2_example() {
+        let mut game = CupGame::from_str("389125467").unwrap();
+        game.extend_to(1_000_000);
+        for _ in 0..10_000_000 {
+            game.turn(false);
+        }
+        let s1 = game.successors[1];
+        let s2 = game.successors[s1];
+        let product = s1 * s2;
+
+        assert_eq!(product, 149245887792);
     }
 }
