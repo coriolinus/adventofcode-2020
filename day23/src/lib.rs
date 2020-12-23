@@ -5,8 +5,8 @@ use thiserror::Error;
 
 #[derive(Clone, Default)]
 struct CupGame {
-    cups: VecDeque<u8>,
-    max: u8,
+    cups: VecDeque<u32>,
+    max: u32,
 }
 
 impl FromStr for CupGame {
@@ -55,14 +55,23 @@ impl CupGame {
         }
         self.cups.rotate_left(1);
     }
+
+    fn extend_to(&mut self, n: u32) {
+        self.cups.extend((self.max + 1)..=n);
+        self.max = n;
+    }
+
+    fn rotate_to_1(&mut self) {
+        while self.cups[0] != 1 {
+            self.cups.rotate_left(1);
+        }
+    }
 }
 
 impl fmt::Display for CupGame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut game: CupGame = self.clone();
-        while game.cups[0] != 1 {
-            game.cups.rotate_left(1);
-        }
+        game.rotate_to_1();
         for n in game.cups.iter().skip(1) {
             write!(f, "{}", n)?;
         }
@@ -75,13 +84,25 @@ pub fn part1(input: &Path) -> Result<(), Error> {
         for _ in 0..100 {
             game.turn();
         }
-        println!("input line {}: {}", idx, game);
+        println!("input line {}: state after 100 moves: {}", idx, game);
     }
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path) -> Result<(), Error> {
+    for (idx, mut game) in parse::<CupGame>(input)?.enumerate() {
+        game.extend_to(1_000_000);
+        for _ in 0..10_000_000 {
+            game.turn();
+        }
+        game.rotate_to_1();
+        let product = game.cups[1] as u64 * game.cups[2] as u64;
+        println!(
+            "input line {}: product of first 2 after 1 after ten million moves: {}",
+            idx, product
+        );
+    }
+    Ok(())
 }
 
 #[derive(Debug, Error)]
