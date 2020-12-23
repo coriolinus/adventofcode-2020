@@ -27,11 +27,15 @@ impl FromStr for CupGame {
             game.successors.insert(predecessor, n);
             predecessor = n;
         }
-        game.successors.remove(&0);
-
+        // we both insert and remove one element after this point,
+        // so we can check the length directly, even though the map
+        // isn't precisely as it will be on a successful return
         if game.successors.len() < 5 {
             return Err(Error::TooFewCups);
         }
+
+        // get rid of extraneous 0 element
+        game.successors.remove(&0);
 
         // we know that these must have been set, so just unwrap
         game.successors.insert(n, first.unwrap());
@@ -93,7 +97,17 @@ impl CupGame {
     }
 
     fn extend_to(&mut self, n: u32) {
-        unimplemented!()
+        let (prev, _current) = self
+            .successors
+            .iter()
+            .find(|(_prev, &succ)| succ == self.current)
+            .unwrap();
+        let mut prev = *prev;
+        for i in (self.max + 1)..=n {
+            self.successors.insert(prev, i);
+            prev = i;
+        }
+        self.successors.insert(n, self.current);
     }
 }
 
@@ -146,4 +160,16 @@ pub enum Error {
     Num(#[from] std::num::ParseIntError),
     #[error("the game doesn't work without at least 5 cups")]
     TooFewCups,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extend() {
+        let mut game = CupGame::from_str("54321").unwrap();
+        game.extend_to(10);
+        assert_eq!(game.to_string(), "6789105432");
+    }
 }
