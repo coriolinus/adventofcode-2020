@@ -1,5 +1,7 @@
 use aoc2020::parse;
 use std::{
+    collections::HashSet,
+    iter::FromIterator,
     ops::{Add, AddAssign},
     path::Path,
     str::FromStr,
@@ -71,7 +73,7 @@ impl FromStr for HexDirections {
 /// See [reference](https://www.redblobgames.com/grids/hexagons/#coordinates).
 ///
 /// Constraint: `q + r + s == 0`
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 struct HexCoordinate {
     q: i32,
     r: i32,
@@ -120,10 +122,42 @@ impl Add<HexDirection> for HexCoordinate {
     }
 }
 
+#[derive(Debug, Default)]
+struct HexMap {
+    coords: HashSet<HexCoordinate>,
+}
+
+impl HexMap {
+    fn toggle(&mut self, coord: HexCoordinate) {
+        // try to remove the coordinate.
+        // `remove` returns whether the value was present, so if it wasn't,
+        // then we can add it.
+        if !self.coords.remove(&coord) {
+            self.coords.insert(coord);
+        }
+    }
+}
+
+impl FromIterator<HexDirections> for HexMap {
+    fn from_iter<T: IntoIterator<Item = HexDirections>>(iter: T) -> Self {
+        let mut map = HexMap::default();
+
+        for HexDirections(directions) in iter.into_iter() {
+            let mut coord = HexCoordinate::default();
+            for direction in directions {
+                coord += direction;
+            }
+            map.toggle(coord);
+        }
+
+        map
+    }
+}
+
 pub fn part1(input: &Path) -> Result<(), Error> {
-    let directions: Vec<_> = parse::<HexDirections>(input)?.map(|hd| hd.0).collect();
-    println!("parsed {} directions", directions.len());
-    unimplemented!()
+    let map: HexMap = parse(input)?.collect();
+    println!("black tiles: {}", map.coords.len());
+    Ok(())
 }
 
 pub fn part2(_input: &Path) -> Result<(), Error> {
