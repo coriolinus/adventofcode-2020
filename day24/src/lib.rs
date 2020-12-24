@@ -19,15 +19,19 @@ enum HexDirection {
 }
 
 impl HexDirection {
-    fn all() -> [HexDirection; 6] {
-        [
-            HexDirection::East,
-            HexDirection::Southeast,
-            HexDirection::Southwest,
-            HexDirection::West,
-            HexDirection::Northwest,
-            HexDirection::Northeast,
-        ]
+    fn iter() -> impl Iterator<Item = HexDirection> {
+        std::iter::successors(Some(HexDirection::East), |direction| {
+            use HexDirection::*;
+
+            match direction {
+                East => Some(Southeast),
+                Southeast => Some(Southwest),
+                Southwest => Some(West),
+                West => Some(Northwest),
+                Northwest => Some(Northeast),
+                Northeast => None,
+            }
+        })
     }
 
     fn try_parse(s: &str) -> (Option<HexDirection>, &str) {
@@ -84,6 +88,10 @@ impl HexCoordinate {
     fn s(&self) -> i32 {
         -self.q - self.r
     }
+
+    fn neighbors(self) -> impl 'static + Iterator<Item = HexCoordinate> {
+        HexDirection::iter().map(move |direction| self + direction)
+    }
 }
 
 impl AddAssign<HexDirection> for HexCoordinate {
@@ -122,7 +130,7 @@ impl Add<HexDirection> for HexCoordinate {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct HexMap {
     coords: HashSet<HexCoordinate>,
 }
@@ -135,6 +143,47 @@ impl HexMap {
         if !self.coords.remove(&coord) {
             self.coords.insert(coord);
         }
+    }
+
+    fn is_black(&self, coord: HexCoordinate) -> bool {
+        self.coords.contains(&coord)
+    }
+
+    fn count_black_neighbors_of(&self, coord: HexCoordinate) -> usize {
+        coord
+            .neighbors()
+            .filter(|coord| self.coords.contains(coord))
+            .count()
+    }
+
+    fn checked_coordinates(&self) -> HashSet<HexCoordinate> {
+        let mut checked = self.coords.clone();
+        for coord in self.coords.iter() {
+            for neighbor in coord.neighbors() {
+                checked.insert(neighbor);
+            }
+        }
+        checked
+    }
+
+    fn conway_step(&self) -> HexMap {
+        let mut successor = self.clone();
+
+        for coord in self.checked_coordinates() {
+            match (self.is_black(coord), self.count_black_neighbors_of(coord)) {
+                (true, n) if n == 0 || n > 2 => {
+                    successor.coords.remove(&coord);
+                }
+                (false, 2) => {
+                    successor.coords.insert(coord);
+                }
+                _ => {
+                    // leave all other tiles as they are
+                }
+            }
+        }
+
+        successor
     }
 }
 
@@ -160,8 +209,16 @@ pub fn part1(input: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn part2(_input: &Path) -> Result<(), Error> {
-    unimplemented!()
+pub fn part2(input: &Path, trace: bool) -> Result<(), Error> {
+    let mut map: HexMap = parse(input)?.collect();
+    for i in 1..=100 {
+        map = map.conway_step();
+        if trace && (i < 10 || i % 10 == 0) {
+            println!("Day {:3}: {}", i, map.coords.len());
+        }
+    }
+    println!("black tiles (Day 100): {}", map.coords.len());
+    Ok(())
 }
 
 #[derive(Debug, Error)]
