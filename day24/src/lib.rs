@@ -84,11 +84,6 @@ struct HexCoordinate {
 }
 
 impl HexCoordinate {
-    #[inline]
-    fn s(&self) -> i32 {
-        -self.q - self.r
-    }
-
     fn neighbors(self) -> impl 'static + Iterator<Item = HexCoordinate> {
         HexDirection::iter().map(move |direction| self + direction)
     }
