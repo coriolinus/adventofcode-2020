@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 aoc2020 = { path = ".." }
-color-eyre = "0.5.8"
-structopt = "0.3.20"
-thiserror = "1.0.22"
-parse-display = "0.4.0"
+color-eyre = "0.5.11"
+structopt = "0.3.26"
+thiserror = "1.0.63"
+parse-display = "0.4.1"
